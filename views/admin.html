@@ -1,0 +1,380 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Barbershop Admin</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: 'Inter', sans-serif; background: #0f0f1a; }
+        .admin-container { max-width: 1400px; margin: 0 auto; padding: 20px; }
+        .header { background: linear-gradient(135deg, #667eea, #764ba2); padding: 20px 30px; border-radius: 20px; color: white; margin-bottom: 30px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 15px; }
+        .btn-back { background: rgba(255,255,255,0.2); border: none; padding: 10px 20px; border-radius: 12px; cursor: pointer; color: white; font-weight: 600; display: inline-flex; align-items: center; gap: 8px; }
+        .stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 20px; margin-bottom: 30px; }
+        .stat-card { background: white; border-radius: 20px; padding: 20px; display: flex; align-items: center; gap: 15px; }
+        .tabs { display: flex; gap: 10px; margin-bottom: 30px; flex-wrap: wrap; }
+        .tab-btn { background: white; border: none; padding: 12px 24px; border-radius: 12px; cursor: pointer; font-weight: 600; }
+        .tab-btn.active { background: linear-gradient(135deg, #667eea, #764ba2); color: white; }
+        .tab-content { display: none; background: white; border-radius: 20px; padding: 30px; }
+        .tab-content.active { display: block; }
+        .barbers-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(350px, 1fr)); gap: 20px; }
+        .barber-card { background: #f8f9fa; border-radius: 15px; padding: 20px; border: 1px solid #e0e0e0; }
+        .btn { background: linear-gradient(135deg, #667eea, #764ba2); color: white; border: none; padding: 10px 20px; border-radius: 10px; cursor: pointer; font-weight: 600; }
+        .btn-danger { background: linear-gradient(135deg, #e74c3c, #c0392b); }
+        .btn-sm { padding: 5px 12px; font-size: 12px; }
+        .modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); justify-content: center; align-items: center; z-index: 1000; }
+        .modal-content { background: white; border-radius: 20px; padding: 30px; max-width: 500px; width: 90%; max-height: 80vh; overflow-y: auto; }
+        .form-group { margin-bottom: 15px; }
+        .form-group label { display: block; margin-bottom: 5px; font-weight: 600; }
+        .form-group input, .form-group select { width: 100%; padding: 10px; border: 2px solid #ddd; border-radius: 8px; }
+        table { width: 100%; border-collapse: collapse; }
+        th, td { padding: 12px; text-align: left; border-bottom: 1px solid #eee; }
+        th { background: #f8f9fa; }
+        .price { color: #e74c3c; font-weight: bold; }
+        @media (max-width: 768px) { .barbers-grid { grid-template-columns: 1fr; } .tabs { overflow-x: auto; } }
+    </style>
+</head>
+<body>
+    <div class="admin-container">
+        <div class="header">
+            <div style="display: flex; align-items: center; gap: 15px;">
+                <button class="btn-back" onclick="window.location.href='/'"><i class="fas fa-arrow-left"></i> На главную</button>
+                <h1><i class="fas fa-cut"></i> Barbershop Admin</h1>
+            </div>
+            <div>
+                <span id="adminName"></span>
+                <button class="btn-danger" onclick="logout()" style="margin-left: 15px; padding: 8px 16px;"><i class="fas fa-sign-out-alt"></i> Выйти</button>
+            </div>
+        </div>
+        
+        <div class="stats-grid" id="statsGrid"></div>
+        
+        <div class="tabs">
+            <button class="tab-btn active" onclick="showTab('barbers')"><i class="fas fa-users"></i> Барберы</button>
+            <button class="tab-btn" onclick="showTab('users')"><i class="fas fa-user-friends"></i> Пользователи</button>
+            <button class="tab-btn" onclick="showTab('appointments')"><i class="fas fa-calendar-check"></i> Записи</button>
+        </div>
+        
+        <div id="tab-barbers" class="tab-content active">
+            <div style="display: flex; justify-content: space-between; margin-bottom: 20px; flex-wrap: wrap; gap: 10px;">
+                <h2><i class="fas fa-cut"></i> Управление барберами</h2>
+                <button class="btn" onclick="openBarberModal()"><i class="fas fa-plus"></i> Добавить барбера</button>
+            </div>
+            <div id="barbersList" class="barbers-grid"></div>
+        </div>
+        
+        <div id="tab-users" class="tab-content">
+            <h2><i class="fas fa-users"></i> Пользователи</h2>
+            <div style="overflow-x: auto;">
+                <table id="usersTable">
+                    <thead><tr><th>ID</th><th>Аватар</th><th>Имя</th><th>Email</th><th>Записей</th><th>Действия</th></tr></thead>
+                    <tbody id="usersBody"></tbody>
+                </table>
+            </div>
+        </div>
+        
+        <div id="tab-appointments" class="tab-content">
+            <h2><i class="fas fa-calendar-alt"></i> Все записи</h2>
+            <div style="overflow-x: auto;">
+                <table id="appointmentsTable">
+                    <thead><tr><th>Дата</th><th>Время</th><th>Клиент</th><th>Барбер</th><th>Услуга</th><th>Сумма</th><th>Статус</th><th>Действия</th></tr></thead>
+                    <tbody id="appointmentsBody"></tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+    
+    <div id="barberModal" class="modal">
+        <div class="modal-content">
+            <h3 id="modalTitle">Добавить барбера</h3>
+            <form id="barberForm">
+                <input type="hidden" id="barberId">
+                <div class="form-group"><label>Имя</label><input type="text" id="barberName" required></div>
+                <div class="form-group"><label>Специализация</label><input type="text" id="barberSpecialization"></div>
+                <div class="form-group"><label>Опыт (лет)</label><input type="number" id="barberExperience"></div>
+                <div class="form-group"><label>Фото URL</label><input type="text" id="barberPhoto" value="https://randomuser.me/api/portraits/men/1.jpg"></div>
+                <div class="form-group"><label>Начало работы</label><input type="time" id="barberWorkStart" value="10:00"></div>
+                <div class="form-group"><label>Конец работы</label><input type="time" id="barberWorkEnd" value="20:00"></div>
+                <div class="form-group"><label>Начало перерыва</label><input type="time" id="barberBreakStart"></div>
+                <div class="form-group"><label>Конец перерыва</label><input type="time" id="barberBreakEnd"></div>
+                <div style="display: flex; gap: 10px; margin-top: 20px;">
+                    <button type="submit" class="btn">Сохранить</button>
+                    <button type="button" class="btn-danger" onclick="closeBarberModal()">Отмена</button>
+                </div>
+            </form>
+        </div>
+    </div>
+    
+    <div id="serviceModal" class="modal">
+        <div class="modal-content">
+            <h3 id="serviceModalTitle">Добавить услугу</h3>
+            <form id="serviceForm">
+                <input type="hidden" id="serviceId">
+                <input type="hidden" id="serviceMasterId">
+                <div class="form-group"><label>Название услуги</label><input type="text" id="serviceName" required></div>
+                <div class="form-group"><label>Цена (₸)</label><input type="number" id="servicePrice" required></div>
+                <div class="form-group"><label>Длительность (мин)</label><input type="number" id="serviceDuration" required></div>
+                <div style="display: flex; gap: 10px; margin-top: 20px;">
+                    <button type="submit" class="btn">Сохранить</button>
+                    <button type="button" class="btn-danger" onclick="closeServiceModal()">Отмена</button>
+                </div>
+            </form>
+        </div>
+    </div>
+    
+    <script>
+        let currentMasterId = null;
+        
+        async function checkAdmin() {
+            const res = await fetch('/api/auth/check');
+            const data = await res.json();
+            if (!data.isAdmin) {
+                const email = prompt('Введите email администратора (microsgamer850@gmail.com):');
+                if (email === 'microsgamer850@gmail.com') {
+                    await fetch('/api/auth/admin/login', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ email: email })
+                    });
+                    location.reload();
+                } else {
+                    alert('Неверный email');
+                    window.location.href = '/';
+                }
+            } else {
+                document.getElementById('adminName').innerText = data.name || 'Admin';
+                loadStats();
+                loadBarbers();
+                loadUsers();
+                loadAppointments();
+            }
+        }
+        
+        async function logout() {
+            await fetch('/api/auth/logout');
+            location.reload();
+        }
+        
+        async function loadStats() {
+            const res = await fetch('/api/stats');
+            const stats = await res.json();
+            document.getElementById('statsGrid').innerHTML = `
+                <div class="stat-card"><i class="fas fa-users" style="font-size: 30px; color: #667eea;"></i><div><h3>${stats.clients}</h3><p>Клиентов</p></div></div>
+                <div class="stat-card"><i class="fas fa-calendar" style="font-size: 30px; color: #667eea;"></i><div><h3>${stats.appointments}</h3><p>Записей</p></div></div>
+                <div class="stat-card"><i class="fas fa-calendar-day" style="font-size: 30px; color: #667eea;"></i><div><h3>${stats.today}</h3><p>Сегодня</p></div></div>
+                <div class="stat-card"><i class="fas fa-tenge-sign" style="font-size: 30px; color: #667eea;"></i><div><h3>${stats.revenue.toLocaleString()} ₸</h3><p>Выручка</p></div></div>
+            `;
+        }
+        
+        async function loadBarbers() {
+            const res = await fetch('/api/masters');
+            const barbers = await res.json();
+            document.getElementById('barbersList').innerHTML = barbers.map(b => `
+                <div class="barber-card">
+                    <div style="display: flex; justify-content: space-between; flex-wrap: wrap; gap: 10px;">
+                        <div>
+                            <h3><i class="fas fa-user-astronaut"></i> ${b.name}</h3>
+                            <p>${b.specialization || 'Универсал'}</p>
+                            <p>⭐ ${b.experience || 0} лет</p>
+                            <p>🕐 ${b.work_start?.substring(0,5)} - ${b.work_end?.substring(0,5)}</p>
+                        </div>
+                        <div>
+                            <button class="btn btn-sm" onclick="editBarber(${b.id})"><i class="fas fa-edit"></i></button>
+                            <button class="btn-danger btn-sm" onclick="deleteBarber(${b.id})"><i class="fas fa-trash"></i></button>
+                        </div>
+                    </div>
+                    <div style="margin-top: 15px;">
+                        <button class="btn btn-sm" onclick="openServiceModal(${b.id})"><i class="fas fa-plus"></i> Добавить услугу</button>
+                    </div>
+                    <div id="services-${b.id}" style="margin-top: 10px;"></div>
+                </div>
+            `).join('');
+            
+            for (const b of barbers) {
+                const servicesRes = await fetch(`/api/masters/${b.id}/services`);
+                const services = await servicesRes.json();
+                const container = document.getElementById(`services-${b.id}`);
+                if (services.length) {
+                    container.innerHTML = services.map(s => `
+                        <div style="background: white; padding: 10px; border-radius: 10px; margin-top: 8px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px;">
+                            <span><strong>${s.name}</strong> - <span class="price">${s.price.toLocaleString()} ₸</span> (${s.duration} мин)</span>
+                            <button class="btn-danger btn-sm" onclick="deleteService(${b.id}, ${s.id})"><i class="fas fa-trash"></i></button>
+                        </div>
+                    `).join('');
+                }
+            }
+        }
+        
+        function openBarberModal(barber = null) {
+            document.getElementById('barberModal').style.display = 'flex';
+            if (barber) {
+                document.getElementById('modalTitle').innerText = 'Редактировать барбера';
+                document.getElementById('barberId').value = barber.id;
+                document.getElementById('barberName').value = barber.name;
+                document.getElementById('barberSpecialization').value = barber.specialization || '';
+                document.getElementById('barberExperience').value = barber.experience || '';
+                document.getElementById('barberPhoto').value = barber.photo_url || '';
+                document.getElementById('barberWorkStart').value = barber.work_start?.substring(0,5) || '10:00';
+                document.getElementById('barberWorkEnd').value = barber.work_end?.substring(0,5) || '20:00';
+                document.getElementById('barberBreakStart').value = barber.break_start?.substring(0,5) || '';
+                document.getElementById('barberBreakEnd').value = barber.break_end?.substring(0,5) || '';
+            } else {
+                document.getElementById('modalTitle').innerText = 'Добавить барбера';
+                document.getElementById('barberForm').reset();
+                document.getElementById('barberId').value = '';
+            }
+        }
+        
+        function closeBarberModal() {
+            document.getElementById('barberModal').style.display = 'none';
+        }
+        
+        document.getElementById('barberForm').onsubmit = async (e) => {
+            e.preventDefault();
+            const data = {
+                name: document.getElementById('barberName').value,
+                specialization: document.getElementById('barberSpecialization').value,
+                experience: document.getElementById('barberExperience').value,
+                photo_url: document.getElementById('barberPhoto').value,
+                work_start: document.getElementById('barberWorkStart').value,
+                work_end: document.getElementById('barberWorkEnd').value,
+                break_start: document.getElementById('barberBreakStart').value || null,
+                break_end: document.getElementById('barberBreakEnd').value || null
+            };
+            const id = document.getElementById('barberId').value;
+            
+            if (id) {
+                await fetch(`/api/masters/${id}`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(data) });
+            } else {
+                await fetch('/api/masters', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(data) });
+            }
+            closeBarberModal();
+            loadBarbers();
+        };
+        
+        async function editBarber(id) {
+            const res = await fetch('/api/masters');
+            const barbers = await res.json();
+            const barber = barbers.find(b => b.id === id);
+            openBarberModal(barber);
+        }
+        
+        async function deleteBarber(id) {
+            if (confirm('Удалить барбера? Все его услуги и записи будут удалены!')) {
+                await fetch(`/api/masters/${id}`, { method: 'DELETE' });
+                loadBarbers();
+            }
+        }
+        
+        function openServiceModal(masterId) {
+            currentMasterId = masterId;
+            document.getElementById('serviceModalTitle').innerText = 'Добавить услугу';
+            document.getElementById('serviceForm').reset();
+            document.getElementById('serviceId').value = '';
+            document.getElementById('serviceMasterId').value = masterId;
+            document.getElementById('serviceModal').style.display = 'flex';
+        }
+        
+        function closeServiceModal() {
+            document.getElementById('serviceModal').style.display = 'none';
+            currentMasterId = null;
+        }
+        
+        document.getElementById('serviceForm').onsubmit = async (e) => {
+            e.preventDefault();
+            const masterId = document.getElementById('serviceMasterId').value;
+            const data = {
+                name: document.getElementById('serviceName').value,
+                price: document.getElementById('servicePrice').value,
+                duration: document.getElementById('serviceDuration').value
+            };
+            await fetch(`/api/masters/${masterId}/services`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(data)
+            });
+            closeServiceModal();
+            loadBarbers();
+        };
+        
+        async function deleteService(masterId, serviceId) {
+            if (confirm('Удалить услугу?')) {
+                await fetch(`/api/masters/${masterId}/services/${serviceId}`, { method: 'DELETE' });
+                loadBarbers();
+            }
+        }
+        
+        async function loadUsers() {
+            const res = await fetch('/api/users');
+            const users = await res.json();
+            document.getElementById('usersBody').innerHTML = users.map(u => `
+                <tr>
+                    <td>${u.id}</td>
+                    <td>${u.photo ? `<img src="${u.photo}" style="width: 40px; height: 40px; border-radius: 50%; object-fit: cover;">` : '<i class="fas fa-user-circle" style="font-size: 30px;"></i>'}</td>
+                    <td>${u.name}</td>
+                    <td>${u.email}</td>
+                    <td>${u.total_appointments || 0}</td>
+                    <td><button class="btn-danger btn-sm" onclick="deleteUser(${u.id})"><i class="fas fa-trash"></i> Удалить</button></td>
+                </tr>
+            `).join('');
+        }
+        
+        async function deleteUser(id) {
+            if (confirm('Удалить пользователя? Все его записи также будут удалены!')) {
+                await fetch(`/api/users/${id}`, { method: 'DELETE' });
+                loadUsers();
+                loadStats();
+            }
+        }
+        
+        async function loadAppointments() {
+            const res = await fetch('/api/appointments');
+            const apps = await res.json();
+            document.getElementById('appointmentsBody').innerHTML = apps.map(a => `
+                <tr>
+                    <td>${a.appointment_date}</td>
+                    <td>${a.appointment_time?.substring(0,5)}</td>
+                    <td>${a.client_name}</td>
+                    <td>${a.master_name}</td>
+                    <td>${a.service_name || '-'}</td>
+                    <td class="price">${(a.service_price || 0).toLocaleString()} ₸</td>
+                    <td>
+                        <select onchange="updateStatus(${a.id}, this.value)" style="padding: 5px; border-radius: 8px;">
+                            <option value="pending" ${a.status === 'pending' ? 'selected' : ''}>⏳ Ожидает</option>
+                            <option value="confirmed" ${a.status === 'confirmed' ? 'selected' : ''}>✅ Подтверждена</option>
+                            <option value="completed" ${a.status === 'completed' ? 'selected' : ''}>✨ Выполнена</option>
+                            <option value="cancelled" ${a.status === 'cancelled' ? 'selected' : ''}>❌ Отменена</option>
+                        </select>
+                    </td>
+                    <td><button class="btn-danger btn-sm" onclick="deleteAppointment(${a.id})"><i class="fas fa-trash"></i></button></td>
+                </tr>
+            `).join('');
+        }
+        
+        async function updateStatus(id, status) {
+            await fetch(`/api/appointments/${id}/status`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ status }) });
+            loadAppointments();
+            loadStats();
+        }
+        
+        async function deleteAppointment(id) {
+            if (confirm('Удалить запись?')) {
+                await fetch(`/api/appointments/${id}`, { method: 'DELETE' });
+                loadAppointments();
+                loadStats();
+            }
+        }
+        
+        function showTab(tab) {
+            document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
+            document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+            document.getElementById(`tab-${tab}`).classList.add('active');
+            event.target.classList.add('active');
+        }
+        
+        checkAdmin();
+    </script>
+</body>
+</html>
