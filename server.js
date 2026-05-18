@@ -11,16 +11,23 @@ const PORT = process.env.PORT || 3000;
 const GOOGLE_CLIENT_ID = process.env.GOOGLE_CLIENT_ID || '615787033029-8scnkebqknccvuvs4blm7r82814eef3m.apps.googleusercontent.com';
 const googleClient = new OAuth2Client(GOOGLE_CLIENT_ID);
 
+// Trust proxy for Render
+app.set('trust proxy', 1);
+
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(express.static('public'));
+
+// Session configuration for Render
 app.use(session({
     secret: process.env.SESSION_SECRET || 'barbershop_super_secret_2024',
     resave: false,
     saveUninitialized: false,
     cookie: { 
-        secure: process.env.NODE_ENV === 'production',
-        maxAge: 30 * 24 * 60 * 60 * 1000 
+        secure: false,
+        httpOnly: true,
+        maxAge: 30 * 24 * 60 * 60 * 1000,
+        sameSite: 'lax'
     }
 }));
 
@@ -146,7 +153,11 @@ app.post('/api/auth/google', async (req, res) => {
 
         const adminCheck = await pool.query('SELECT * FROM admins WHERE email = $1', [email]);
         req.session.isAdmin = adminCheck.rows.length > 0;
-        req.session.save();
+        
+        req.session.save((err) => {
+            if (err) console.error('Session save error:', err);
+            console.log('✅ Session saved for user:', req.session.userId);
+        });
 
         res.json({ 
             success: true, 
@@ -191,6 +202,7 @@ app.get('/api/auth/logout', (req, res) => {
 });
 
 app.get('/api/auth/check', (req, res) => {
+    console.log('🔍 Session check:', { userId: req.session.userId, isAdmin: req.session.isAdmin });
     res.json({
         isAuthenticated: !!req.session.userId,
         isAdmin: req.session.isAdmin || false,
