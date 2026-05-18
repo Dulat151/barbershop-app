@@ -18,7 +18,7 @@ app.use(session({
     secret: process.env.SESSION_SECRET || 'barbershop_super_secret_2024',
     resave: false,
     saveUninitialized: false,
-    cookie: { secure: false, maxAge: 24 * 60 * 60 * 1000 }
+    cookie: { secure: false, maxAge: 30 * 24 * 60 * 60 * 1000 } // 30 дней
 }));
 
 const pool = new Pool({
@@ -52,8 +52,6 @@ app.post('/api/auth/google', async (req, res) => {
         let user = await pool.query('SELECT * FROM users WHERE email = $1', [email]);
         if (user.rows.length === 0) {
             user = await pool.query('INSERT INTO users (name, email, photo, provider) VALUES ($1, $2, $3, $4) RETURNING *', [name, email, picture, 'google']);
-        } else {
-            await pool.query('UPDATE users SET photo = $1 WHERE email = $2', [picture, email]);
         }
 
         req.session.userId = user.rows[0].id;
@@ -62,10 +60,26 @@ app.post('/api/auth/google', async (req, res) => {
 
         const adminCheck = await pool.query('SELECT * FROM admins WHERE email = $1', [email]);
         req.session.isAdmin = adminCheck.rows.length > 0;
+        req.session.save();
 
         res.json({ success: true, user: user.rows[0], isAdmin: req.session.isAdmin });
     } catch (error) {
         res.status(401).json({ error: 'Ошибка авторизации' });
+    }
+});
+
+app.post('/api/auth/admin/login', async (req, res) => {
+    const { email } = req.body;
+    const adminCheck = await pool.query('SELECT * FROM admins WHERE email = $1', [email]);
+    
+    if (adminCheck.rows.length > 0) {
+        req.session.isAdmin = true;
+        req.session.userName = 'Администратор';
+        req.session.userEmail = email;
+        req.session.save();
+        res.json({ success: true });
+    } else {
+        res.status(401).json({ error: 'Доступ запрещён' });
     }
 });
 
@@ -136,7 +150,7 @@ app.delete('/api/users/:id', isAdmin, async (req, res) => {
     res.json({ success: true });
 });
 
-// ============ ЗАПИСИ ============
+// ============ ЗАПИСИ (С ВОЗМОЖНОСТЬЮ ОТМЕНЫ) ============
 app.get('/api/appointments', isAdmin, async (req, res) => {
     const result = await pool.query(`SELECT a.*, u.name as client_name, u.phone, m.name as master_name, ms.name as service_name, ms.price as service_price FROM appointments a JOIN users u ON a.user_id = u.id JOIN masters m ON a.master_id = m.id LEFT JOIN master_services ms ON a.master_service_id = ms.id ORDER BY a.appointment_date DESC, a.appointment_time`);
     res.json(result.rows);
@@ -185,6 +199,32 @@ app.post('/api/appointments', isAuthenticated, async (req, res) => {
     } finally {
         client.release();
     }
+});
+
+// ОТМЕНА ЗАПИСИ (пользователем)
+app.put('/api/appointments/:id/cancel', isAuthenticated, async (req, res) => {
+    const { id } = req.params;
+    const result = await pool.query('SELECT user_id FROM appointments WHERE id = $1', [id]);
+    if (result.rows.length === 0) return res.status(404).json({ error: 'Запись не найдена' });
+    if (result.rows[0].user_id !== req.session.userId) return res.status(403).json({ error: 'Нет прав' });
+    await pool.query('UPDATE appointments SET status = $1 WHERE id = $2', ['cancelled', id]);
+    res.json({ success: true });
+});
+
+// ИЗМЕНЕНИЕ ЗАПИСИ (пользователем)
+app.put('/api/appointments/:id', isAuthenticated, async (req, res) => {
+    const { id } = req.params;
+    const { master_id, master_service_id, appointment_date, appointment_time } = req.body;
+    
+    const result = await pool.query('SELECT user_id FROM appointments WHERE id = $1', [id]);
+    if (result.rows.length === 0) return res.status(404).json({ error: 'Запись не найдена' });
+    if (result.rows[0].user_id !== req.session.userId) return res.status(403).json({ error: 'Нет прав' });
+    
+    const duplicate = await pool.query('SELECT id FROM appointments WHERE master_id = $1 AND appointment_date = $2 AND appointment_time = $3 AND status != $4 AND id != $5', [master_id, appointment_date, appointment_time, 'cancelled', id]);
+    if (duplicate.rows.length > 0) return res.status(409).json({ error: 'Это время уже занято' });
+    
+    await pool.query('UPDATE appointments SET master_id=$1, master_service_id=$2, appointment_date=$3, appointment_time=$4 WHERE id=$5', [master_id, master_service_id, appointment_date, appointment_time, id]);
+    res.json({ success: true });
 });
 
 app.put('/api/appointments/:id/status', isAdmin, async (req, res) => {
