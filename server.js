@@ -11,14 +11,12 @@ const PORT = process.env.PORT || 3000;
 const GOOGLE_CLIENT_ID = process.env.GOOGLE_CLIENT_ID || '615787033029-8scnkebqknccvuvs4blm7r82814eef3m.apps.googleusercontent.com';
 const googleClient = new OAuth2Client(GOOGLE_CLIENT_ID);
 
-// Trust proxy for Render
 app.set('trust proxy', 1);
 
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(express.static('public'));
 
-// Session configuration for Render
 app.use(session({
     secret: process.env.SESSION_SECRET || 'barbershop_super_secret_2024',
     resave: false,
@@ -54,6 +52,11 @@ async function deleteOldAppointments() {
 
 async function initDatabase() {
     try {
+        // Добавляем колонку phone если её нет (ВАЖНО!)
+        await pool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS phone VARCHAR(20);`);
+        console.log('✅ Колонка phone проверена/добавлена');
+        
+        // Создаём таблицы если их нет
         await pool.query(`CREATE TABLE IF NOT EXISTS users (id SERIAL PRIMARY KEY, name VARCHAR(100), email VARCHAR(100) UNIQUE, phone VARCHAR(20), provider VARCHAR(50), created_at TIMESTAMP DEFAULT NOW());`);
         await pool.query(`CREATE TABLE IF NOT EXISTS masters (id SERIAL PRIMARY KEY, name VARCHAR(100), specialization VARCHAR(100), experience INT, work_start TIME DEFAULT '10:00', work_end TIME DEFAULT '20:00', break_start TIME, break_end TIME);`);
         await pool.query(`CREATE TABLE IF NOT EXISTS master_services (id SERIAL PRIMARY KEY, master_id INT REFERENCES masters(id), name VARCHAR(100), price DECIMAL(10,2), duration INT);`);
@@ -123,7 +126,6 @@ app.post('/api/auth/google', async (req, res) => {
     console.log('🔐 Google auth request received');
     
     if (!credential) {
-        console.log('❌ No credential provided');
         return res.status(400).json({ error: 'No credential provided' });
     }
     
@@ -136,14 +138,12 @@ app.post('/api/auth/google', async (req, res) => {
         const payload = ticket.getPayload();
         const { email, name } = payload;
         
-        console.log(`✅ User verified: ${email} (${name})`);
+        console.log(`✅ User verified: ${email}`);
 
         let user = await pool.query('SELECT * FROM users WHERE email = $1', [email]);
         if (user.rows.length === 0) {
-            user = await pool.query('INSERT INTO users (name, email, provider) VALUES ($1, $2, $3) RETURNING id, name, email, phone', [name, email, 'google']);
+            user = await pool.query('INSERT INTO users (name, email, provider) VALUES ($1, $2, $3) RETURNING *', [name, email, 'google']);
             console.log(`📝 New user created: ${email}`);
-        } else {
-            console.log(`👤 Existing user: ${email}`);
         }
 
         req.session.userId = user.rows[0].id;
@@ -154,20 +154,17 @@ app.post('/api/auth/google', async (req, res) => {
         const adminCheck = await pool.query('SELECT * FROM admins WHERE email = $1', [email]);
         req.session.isAdmin = adminCheck.rows.length > 0;
         
-        req.session.save((err) => {
-            if (err) console.error('Session save error:', err);
-            console.log('✅ Session saved for user:', req.session.userId);
-        });
+        req.session.save();
 
         res.json({ 
             success: true, 
-            user: user.rows[0], 
+            user: { id: user.rows[0].id, name: user.rows[0].name, email: user.rows[0].email, phone: user.rows[0].phone },
             isAdmin: req.session.isAdmin, 
             needPhone: !user.rows[0].phone 
         });
     } catch (error) {
         console.error('❌ Auth error:', error.message);
-        res.status(401).json({ error: 'Ошибка авторизации: ' + error.message });
+        res.status(401).json({ error: 'Ошибка авторизации' });
     }
 });
 
@@ -202,7 +199,6 @@ app.get('/api/auth/logout', (req, res) => {
 });
 
 app.get('/api/auth/check', (req, res) => {
-    console.log('🔍 Session check:', { userId: req.session.userId, isAdmin: req.session.isAdmin });
     res.json({
         isAuthenticated: !!req.session.userId,
         isAdmin: req.session.isAdmin || false,
@@ -221,7 +217,6 @@ app.get('/api/masters', async (req, res) => {
         const result = await pool.query('SELECT * FROM masters ORDER BY id');
         res.json(result.rows);
     } catch (err) {
-        console.error('Masters error:', err);
         res.status(500).json({ error: 'Ошибка загрузки мастеров' });
     }
 });
@@ -255,7 +250,6 @@ app.get('/api/masters/:id/active-appointments', isAdmin, async (req, res) => {
         `, [req.params.id]);
         res.json(result.rows);
     } catch (err) {
-        console.error('Active appointments error:', err);
         res.status(500).json({ error: 'Ошибка загрузки записей' });
     }
 });
@@ -266,7 +260,6 @@ app.get('/api/masters/:id/services', async (req, res) => {
         const result = await pool.query('SELECT * FROM master_services WHERE master_id = $1 ORDER BY price', [req.params.id]);
         res.json(result.rows);
     } catch (err) {
-        console.error('Services error:', err);
         res.status(500).json({ error: 'Ошибка загрузки услуг' });
     }
 });
@@ -326,7 +319,6 @@ app.get('/api/available-slots/:masterId/:date', async (req, res) => {
         }
         res.json(slots);
     } catch (err) {
-        console.error('Available slots error:', err);
         res.status(500).json({ error: 'Ошибка загрузки слотов' });
     }
 });
@@ -397,5 +389,4 @@ app.get('/health', (req, res) => res.status(200).json({ status: 'ok' }));
 app.listen(PORT, () => {
     console.log(`🚀 Сервер: http://localhost:${PORT}`);
     console.log(`👨‍💼 Админка: http://localhost:${PORT}/admin`);
-    console.log(`✅ Google Client ID: ${GOOGLE_CLIENT_ID.substring(0, 20)}...`);
 });
