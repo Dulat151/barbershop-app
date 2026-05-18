@@ -11,6 +11,7 @@ const PORT = process.env.PORT || 3000;
 const GOOGLE_CLIENT_ID = process.env.GOOGLE_CLIENT_ID || '615787033029-8scnkebqknccvuvs4blm7r82814eef3m.apps.googleusercontent.com';
 const googleClient = new OAuth2Client(GOOGLE_CLIENT_ID);
 
+// Middleware
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(express.static('public'));
@@ -18,12 +19,16 @@ app.use(session({
     secret: process.env.SESSION_SECRET || 'barbershop_super_secret_2024',
     resave: false,
     saveUninitialized: false,
-    cookie: { secure: false, maxAge: 30 * 24 * 60 * 60 * 1000 } // 30 дней
+    cookie: { secure: false, maxAge: 30 * 24 * 60 * 60 * 1000 }
 }));
 
+// Подключение к БД с увеличенным таймаутом
 const pool = new Pool({
     connectionString: process.env.DATABASE_URL || 'postgresql://barber_user:admin123@localhost:5432/barbershop_db',
-    ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false
+    ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false,
+    connectionTimeoutMillis: 10000,
+    idleTimeoutMillis: 30000,
+    max: 20
 });
 
 pool.connect((err) => {
@@ -31,6 +36,7 @@ pool.connect((err) => {
     else console.log('✅ PostgreSQL подключена');
 });
 
+// Middleware проверки админа
 const isAdmin = (req, res, next) => {
     if (req.session.isAdmin) return next();
     res.status(401).json({ error: 'Не авторизован' });
@@ -64,6 +70,7 @@ app.post('/api/auth/google', async (req, res) => {
 
         res.json({ success: true, user: user.rows[0], isAdmin: req.session.isAdmin });
     } catch (error) {
+        console.error('Auth error:', error);
         res.status(401).json({ error: 'Ошибка авторизации' });
     }
 });
@@ -98,8 +105,13 @@ app.get('/api/auth/check', (req, res) => {
 
 // ============ БАРБЕРЫ ============
 app.get('/api/masters', async (req, res) => {
-    const result = await pool.query('SELECT * FROM masters ORDER BY id');
-    res.json(result.rows);
+    try {
+        const result = await pool.query('SELECT * FROM masters ORDER BY id');
+        res.json(result.rows);
+    } catch (err) {
+        console.error('Masters error:', err);
+        res.status(500).json({ error: 'Ошибка загрузки мастеров' });
+    }
 });
 
 app.post('/api/masters', isAdmin, async (req, res) => {
@@ -124,8 +136,13 @@ app.delete('/api/masters/:id', isAdmin, async (req, res) => {
 
 // ============ УСЛУГИ ============
 app.get('/api/masters/:id/services', async (req, res) => {
-    const result = await pool.query('SELECT * FROM master_services WHERE master_id = $1 ORDER BY price', [req.params.id]);
-    res.json(result.rows);
+    try {
+        const result = await pool.query('SELECT * FROM master_services WHERE master_id = $1 ORDER BY price', [req.params.id]);
+        res.json(result.rows);
+    } catch (err) {
+        console.error('Services error:', err);
+        res.status(500).json({ error: 'Ошибка загрузки услуг' });
+    }
 });
 
 app.post('/api/masters/:id/services', isAdmin, async (req, res) => {
@@ -150,7 +167,7 @@ app.delete('/api/users/:id', isAdmin, async (req, res) => {
     res.json({ success: true });
 });
 
-// ============ ЗАПИСИ (С ВОЗМОЖНОСТЬЮ ОТМЕНЫ) ============
+// ============ ЗАПИСИ ============
 app.get('/api/appointments', isAdmin, async (req, res) => {
     const result = await pool.query(`SELECT a.*, u.name as client_name, u.phone, m.name as master_name, ms.name as service_name, ms.price as service_price FROM appointments a JOIN users u ON a.user_id = u.id JOIN masters m ON a.master_id = m.id LEFT JOIN master_services ms ON a.master_service_id = ms.id ORDER BY a.appointment_date DESC, a.appointment_time`);
     res.json(result.rows);
@@ -162,22 +179,30 @@ app.get('/api/my-appointments', isAuthenticated, async (req, res) => {
 });
 
 app.get('/api/available-slots/:masterId/:date', async (req, res) => {
-    const { masterId, date } = req.params;
-    const master = await pool.query('SELECT work_start, work_end, break_start, break_end FROM masters WHERE id = $1', [masterId]);
-    if (master.rows.length === 0) return res.json([]);
-    const workStart = parseInt(master.rows[0].work_start.split(':')[0]);
-    const workEnd = parseInt(master.rows[0].work_end.split(':')[0]);
-    const breakStart = master.rows[0].break_start ? parseInt(master.rows[0].break_start.split(':')[0]) : null;
-    const breakEnd = master.rows[0].break_end ? parseInt(master.rows[0].break_end.split(':')[0]) : null;
-    const booked = await pool.query('SELECT appointment_time FROM appointments WHERE master_id = $1 AND appointment_date = $2 AND status != $3', [masterId, date, 'cancelled']);
-    const bookedTimes = booked.rows.map(r => r.appointment_time);
-    const slots = [];
-    for (let hour = workStart; hour < workEnd; hour++) {
-        if (breakStart && breakEnd && hour >= breakStart && hour < breakEnd) continue;
-        const time = `${hour.toString().padStart(2, '0')}:00:00`;
-        if (!bookedTimes.includes(time)) slots.push(time);
+    try {
+        const { masterId, date } = req.params;
+        const master = await pool.query('SELECT work_start, work_end, break_start, break_end FROM masters WHERE id = $1', [masterId]);
+        if (master.rows.length === 0) return res.json([]);
+        
+        const workStart = parseInt(master.rows[0].work_start.split(':')[0]);
+        const workEnd = parseInt(master.rows[0].work_end.split(':')[0]);
+        const breakStart = master.rows[0].break_start ? parseInt(master.rows[0].break_start.split(':')[0]) : null;
+        const breakEnd = master.rows[0].break_end ? parseInt(master.rows[0].break_end.split(':')[0]) : null;
+        
+        const booked = await pool.query('SELECT appointment_time FROM appointments WHERE master_id = $1 AND appointment_date = $2 AND status != $3', [masterId, date, 'cancelled']);
+        const bookedTimes = booked.rows.map(r => r.appointment_time);
+        
+        const slots = [];
+        for (let hour = workStart; hour < workEnd; hour++) {
+            if (breakStart && breakEnd && hour >= breakStart && hour < breakEnd) continue;
+            const time = `${hour.toString().padStart(2, '0')}:00:00`;
+            if (!bookedTimes.includes(time)) slots.push(time);
+        }
+        res.json(slots);
+    } catch (err) {
+        console.error('Available slots error:', err);
+        res.status(500).json({ error: 'Ошибка загрузки слотов' });
     }
-    res.json(slots);
 });
 
 app.post('/api/appointments', isAuthenticated, async (req, res) => {
@@ -201,7 +226,6 @@ app.post('/api/appointments', isAuthenticated, async (req, res) => {
     }
 });
 
-// ОТМЕНА ЗАПИСИ (пользователем)
 app.put('/api/appointments/:id/cancel', isAuthenticated, async (req, res) => {
     const { id } = req.params;
     const result = await pool.query('SELECT user_id FROM appointments WHERE id = $1', [id]);
@@ -211,7 +235,6 @@ app.put('/api/appointments/:id/cancel', isAuthenticated, async (req, res) => {
     res.json({ success: true });
 });
 
-// ИЗМЕНЕНИЕ ЗАПИСИ (пользователем)
 app.put('/api/appointments/:id', isAuthenticated, async (req, res) => {
     const { id } = req.params;
     const { master_id, master_service_id, appointment_date, appointment_time } = req.body;
@@ -255,7 +278,13 @@ app.get('/api/stats', isAdmin, async (req, res) => {
 app.get('/', (req, res) => res.sendFile(path.join(__dirname, 'public', 'index.html')));
 app.get('/admin', (req, res) => res.sendFile(path.join(__dirname, 'views', 'admin.html')));
 
+// Health check endpoint для UptimeRobot
+app.get('/health', (req, res) => {
+    res.status(200).json({ status: 'ok', timestamp: new Date().toISOString() });
+});
+
 app.listen(PORT, () => {
     console.log(`🚀 Сервер: http://localhost:${PORT}`);
     console.log(`👨‍💼 Админка: http://localhost:${PORT}/admin`);
+    console.log(`💚 Health check: http://localhost:${PORT}/health`);
 });
