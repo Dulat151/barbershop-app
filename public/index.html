@@ -33,30 +33,15 @@
         .time-slots { display: grid; grid-template-columns: repeat(auto-fill, minmax(100px, 1fr)); gap: 10px; margin-bottom: 30px; }
         .time-slot { background: #f8f9fa; padding: 12px; text-align: center; border-radius: 10px; cursor: pointer; border: 2px solid transparent; }
         .time-slot.selected { background: linear-gradient(135deg, #667eea, #764ba2); color: white; }
-        .success-message { background: #d4edda; color: #155724; padding: 15px; border-radius: 10px; margin: 20px; text-align: center; }
-        .hidden { display: none; }
         .user-info { display: flex; align-items: center; gap: 15px; }
         .user-avatar { width: 40px; height: 40px; border-radius: 50%; object-fit: cover; }
         .logout-btn { background: #e74c3c; padding: 8px 16px; margin: 0; }
         .my-appointments { margin-top: 30px; padding: 20px; background: #f8f9fa; border-radius: 20px; }
         .appointment-item { background: white; padding: 15px; border-radius: 12px; margin-bottom: 10px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px; }
-        .auth-container {
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            min-height: 60vh;
-            padding: 40px;
-        }
-        .auth-card {
-            text-align: center;
-            padding: 40px;
-        }
+        .auth-container { display: flex; justify-content: center; align-items: center; min-height: 60vh; padding: 40px; }
+        .auth-card { text-align: center; padding: 40px; }
         .auth-card h2 { margin-bottom: 20px; }
-        .g_id_signin {
-            display: flex;
-            justify-content: center;
-            margin-top: 20px;
-        }
+        .g_id_signin { display: flex; justify-content: center; margin-top: 20px; }
         @media (max-width: 768px) { .booking-form { padding: 20px; } .masters-grid { grid-template-columns: 1fr; } }
     </style>
 </head>
@@ -81,7 +66,6 @@
         let currentUser = null;
         let currentStep = 1;
         
-        // Проверка авторизации
         async function checkAuth() {
             const res = await fetch('/api/auth/check');
             const data = await res.json();
@@ -103,35 +87,22 @@
                         <h2>Добро пожаловать!</h2>
                         <p style="color: #666; margin-bottom: 30px;">Войдите через Google чтобы продолжить</p>
                         <div id="googleButton"></div>
-                        <p style="margin-top: 20px; font-size: 12px; color: #999;">Только Google авторизация</p>
                     </div>
                 </div>
             `;
             
-            // Инициализируем Google кнопку
             google.accounts.id.initialize({
                 client_id: '615787033029-8scnkebqknccvuvs4blm7r82814eef3m.apps.googleusercontent.com',
-                callback: handleGoogleLogin,
-                auto_select: false,
-                cancel_on_tap_outside: true
+                callback: handleGoogleLogin
             });
             
             google.accounts.id.renderButton(
                 document.getElementById('googleButton'),
-                { 
-                    type: 'standard',
-                    theme: 'outline',
-                    size: 'large',
-                    text: 'signin_with',
-                    shape: 'rectangular',
-                    logo_alignment: 'left',
-                    width: '300'
-                }
+                { type: 'standard', theme: 'outline', size: 'large', text: 'signin_with' }
             );
         }
         
         async function handleGoogleLogin(response) {
-            console.log('Google response received');
             const res = await fetch('/api/auth/google', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
@@ -143,7 +114,7 @@
                 showBookingInterface();
                 updateNavBar();
             } else {
-                alert('Ошибка авторизации: ' + (data.error || 'Неизвестная ошибка'));
+                alert('Ошибка: ' + (data.error || 'Неизвестная ошибка'));
             }
         }
         
@@ -164,18 +135,13 @@
         
         async function logout() {
             await fetch('/api/auth/logout');
-            currentUser = null;
             location.reload();
         }
         
         function showBackButton(show) {
             const backBtn = document.getElementById('backBtn');
-            if (show) {
-                backBtn.style.display = 'inline-flex';
-                backBtn.onclick = goBack;
-            } else {
-                backBtn.style.display = 'none';
-            }
+            backBtn.style.display = show ? 'inline-flex' : 'none';
+            if (show) backBtn.onclick = goBack;
         }
         
         function goBack() {
@@ -364,10 +330,7 @@
             }
         }
         
-        // Ждём загрузки Google Identity Services
-        window.addEventListener('load', () => {
-            checkAuth();
-        });
+        checkAuth();
     </script>
 </body>
 </html>
