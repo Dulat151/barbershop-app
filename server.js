@@ -18,16 +18,15 @@ app.use(session({
     secret: process.env.SESSION_SECRET || 'barbershop_super_secret_2024',
     resave: false,
     saveUninitialized: false,
-    cookie: { secure: false, maxAge: 30 * 24 * 60 * 60 * 1000 }
+    cookie: { 
+        secure: process.env.NODE_ENV === 'production',
+        maxAge: 30 * 24 * 60 * 60 * 1000 
+    }
 }));
 
 const pool = new Pool({
-    user: process.env.DB_USER || 'dulatamangeldy',
-    host: process.env.DB_HOST || 'localhost',
-    database: process.env.DB_NAME || 'barbershop_db',
-    password: process.env.DB_PASSWORD || '',
-    port: process.env.DB_PORT || 5432,
-    ssl: false,
+    connectionString: process.env.DATABASE_URL,
+    ssl: { rejectUnauthorized: false },
     connectionTimeoutMillis: 10000,
 });
 
@@ -95,7 +94,6 @@ setInterval(deleteOldAppointments, 60 * 60 * 1000);
 pool.connect(async (err) => {
     if (err) {
         console.error('❌ Ошибка БД:', err);
-        console.log('\n💡 Попробуй запустить PostgreSQL: brew services start postgresql');
     } else {
         console.log('✅ PostgreSQL подключена');
         await initDatabase();
@@ -115,14 +113,30 @@ const isAuthenticated = (req, res, next) => {
 // ============ АВТОРИЗАЦИЯ ============
 app.post('/api/auth/google', async (req, res) => {
     const { credential } = req.body;
+    console.log('🔐 Google auth request received');
+    
+    if (!credential) {
+        console.log('❌ No credential provided');
+        return res.status(400).json({ error: 'No credential provided' });
+    }
+    
     try {
-        const ticket = await googleClient.verifyIdToken({ idToken: credential, audience: GOOGLE_CLIENT_ID });
+        const ticket = await googleClient.verifyIdToken({
+            idToken: credential,
+            audience: GOOGLE_CLIENT_ID
+        });
+        
         const payload = ticket.getPayload();
         const { email, name } = payload;
+        
+        console.log(`✅ User verified: ${email} (${name})`);
 
         let user = await pool.query('SELECT * FROM users WHERE email = $1', [email]);
         if (user.rows.length === 0) {
             user = await pool.query('INSERT INTO users (name, email, provider) VALUES ($1, $2, $3) RETURNING id, name, email, phone', [name, email, 'google']);
+            console.log(`📝 New user created: ${email}`);
+        } else {
+            console.log(`👤 Existing user: ${email}`);
         }
 
         req.session.userId = user.rows[0].id;
@@ -134,10 +148,15 @@ app.post('/api/auth/google', async (req, res) => {
         req.session.isAdmin = adminCheck.rows.length > 0;
         req.session.save();
 
-        res.json({ success: true, user: user.rows[0], isAdmin: req.session.isAdmin, needPhone: !user.rows[0].phone });
+        res.json({ 
+            success: true, 
+            user: user.rows[0], 
+            isAdmin: req.session.isAdmin, 
+            needPhone: !user.rows[0].phone 
+        });
     } catch (error) {
-        console.error('Auth error:', error);
-        res.status(401).json({ error: 'Ошибка авторизации' });
+        console.error('❌ Auth error:', error.message);
+        res.status(401).json({ error: 'Ошибка авторизации: ' + error.message });
     }
 });
 
@@ -222,7 +241,6 @@ app.get('/api/masters/:id/active-appointments', isAdmin, async (req, res) => {
             WHERE a.master_id = $1 AND a.status != 'cancelled'
             ORDER BY a.appointment_date, a.appointment_time
         `, [req.params.id]);
-        console.log(`📋 Найдено ${result.rows.length} записей для барбера ${req.params.id}`);
         res.json(result.rows);
     } catch (err) {
         console.error('Active appointments error:', err);
@@ -367,4 +385,5 @@ app.get('/health', (req, res) => res.status(200).json({ status: 'ok' }));
 app.listen(PORT, () => {
     console.log(`🚀 Сервер: http://localhost:${PORT}`);
     console.log(`👨‍💼 Админка: http://localhost:${PORT}/admin`);
+    console.log(`✅ Google Client ID: ${GOOGLE_CLIENT_ID.substring(0, 20)}...`);
 });
