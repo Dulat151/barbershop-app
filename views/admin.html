@@ -2,47 +2,150 @@
 <html lang="ru">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
     <title>Barbershop Admin</title>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
-        *{margin:0;padding:0;box-sizing:border-box}body{font-family:'Inter',sans-serif;background:#0f0f1a}.admin-container{max-width:1400px;margin:0 auto;padding:20px}.header{background:linear-gradient(135deg,#667eea,#764ba2);padding:20px 30px;border-radius:20px;color:white;margin-bottom:30px;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:15px}.btn-back{background:rgba(255,255,255,0.2);border:none;padding:10px 20px;border-radius:12px;cursor:pointer;color:white;font-weight:600;display:inline-flex;align-items:center;gap:8px}.stats-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:20px;margin-bottom:30px}.stat-card{background:white;border-radius:20px;padding:20px;display:flex;align-items:center;gap:15px}.tabs{display:flex;gap:10px;margin-bottom:30px;flex-wrap:wrap}.tab-btn{background:white;border:none;padding:12px 24px;border-radius:12px;cursor:pointer;font-weight:600}.tab-btn.active{background:linear-gradient(135deg,#667eea,#764ba2);color:white}.tab-content{display:none;background:white;border-radius:20px;padding:30px}.tab-content.active{display:block}.barbers-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(350px,1fr));gap:20px}.barber-card{background:#f8f9fa;border-radius:15px;padding:20px;border:1px solid #e0e0e0}.btn{background:linear-gradient(135deg,#667eea,#764ba2);color:white;border:none;padding:10px 20px;border-radius:10px;cursor:pointer;font-weight:600}.btn-danger{background:linear-gradient(135deg,#e74c3c,#c0392b)}.btn-sm{padding:5px 12px;font-size:12px}.modal{display:none;position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.5);justify-content:center;align-items:center;z-index:1000}.modal-content{background:white;border-radius:20px;padding:30px;max-width:500px;width:90%;max-height:80vh;overflow-y:auto}.form-group{margin-bottom:15px}.form-group label{display:block;margin-bottom:5px;font-weight:600}.form-group input,.form-group select{width:100%;padding:10px;border:2px solid #ddd;border-radius:8px}table{width:100%;border-collapse:collapse}th,td{padding:12px;text-align:left;border-bottom:1px solid #eee}th{background:#f8f9fa}.price{color:#e74c3c;font-weight:bold}@media(max-width:768px){.barbers-grid{grid-template-columns:1fr}.tabs{overflow-x:auto}}
+        *{margin:0;padding:0;box-sizing:border-box}
+        body{font-family:'Inter',sans-serif;background:#0f0f1a}
+        .admin-container{max-width:1400px;margin:0 auto;padding:20px}
+        .header{background:linear-gradient(135deg,#667eea,#764ba2);padding:20px 30px;border-radius:20px;color:white;margin-bottom:30px;display:flex;justify-content:flex-end;align-items:center;flex-wrap:wrap;gap:15px}
+        .stats-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:20px;margin-bottom:30px}
+        .stat-card{background:white;border-radius:20px;padding:20px;display:flex;align-items:center;gap:15px}
+        .tabs{display:flex;gap:10px;margin-bottom:30px;flex-wrap:wrap}
+        .tab-btn{background:white;border:none;padding:12px 24px;border-radius:12px;cursor:pointer;font-weight:600}
+        .tab-btn.active{background:linear-gradient(135deg,#667eea,#764ba2);color:white}
+        .tab-content{display:none;background:white;border-radius:20px;padding:30px}
+        .tab-content.active{display:block}
+        .barbers-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(450px,1fr));gap:20px}
+        .barber-card{background:#f8f9fa;border-radius:15px;padding:20px;border:1px solid #e0e0e0}
+        .barber-header{display:flex;justify-content:space-between;align-items:start;margin-bottom:15px;flex-wrap:wrap;gap:10px}
+        .barber-name{font-size:18px;font-weight:700;color:#1a1a2e}
+        .barber-spec{color:#667eea;font-size:14px;margin:5px 0}
+        .barber-time{color:#666;font-size:12px;margin:5px 0}
+        .btn{background:linear-gradient(135deg,#667eea,#764ba2);color:white;border:none;padding:10px 20px;border-radius:10px;cursor:pointer;font-weight:600}
+        .btn-danger{background:linear-gradient(135deg,#e74c3c,#c0392b)}
+        .btn-sm{padding:5px 12px;font-size:12px}
+        .modal{display:none;position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.5);justify-content:center;align-items:center;z-index:1000}
+        .modal-content{background:white;border-radius:20px;padding:30px;max-width:500px;width:90%;max-height:80vh;overflow-y:auto}
+        .form-group{margin-bottom:15px}
+        .form-group label{display:block;margin-bottom:5px;font-weight:600}
+        .form-group input,.form-group select{width:100%;padding:10px;border:2px solid #ddd;border-radius:8px}
+        table{width:100%;border-collapse:collapse;overflow-x:auto;display:block}
+        th,td{padding:12px;text-align:left;border-bottom:1px solid #eee}
+        th{background:#f8f9fa}
+        .price{color:#e74c3c;font-weight:bold}
+        .appointments-list{margin-top:15px;background:white;border-radius:10px;padding:10px;max-height:350px;overflow-y:auto}
+        .appointment-item-admin{padding:10px;border-bottom:1px solid #eee;font-size:13px}
+        .appointment-item-admin:last-child{border-bottom:none}
+        .status-pending{color:#f39c12;font-weight:bold}
+        .status-confirmed{color:#27ae60;font-weight:bold}
+        .status-completed{color:#3498db;font-weight:bold}
+        .no-appointments{color:#999;font-size:13px;padding:10px;text-align:center}
+        .section-title{font-size:14px;font-weight:600;margin:10px 0;color:#667eea}
+        .login-container{display:flex;justify-content:center;align-items:center;min-height:100vh;background:linear-gradient(135deg,#667eea,#764ba2)}
+        .login-card{background:white;border-radius:30px;padding:40px;max-width:400px;width:90%;text-align:center}
+        .login-card input{width:100%;padding:15px;margin:20px 0;border:2px solid #ddd;border-radius:12px;font-size:16px}
+        @media(max-width:768px){
+            .admin-container{padding:10px}
+            .stats-grid{grid-template-columns:1fr}
+            .barbers-grid{grid-template-columns:1fr}
+            .tabs{overflow-x:auto;flex-wrap:nowrap}
+            .tab-btn{white-space:nowrap}
+            th,td{padding:8px;font-size:12px}
+        }
     </style>
 </head>
 <body>
-    <div class="admin-container">
-        <div class="header"><div style="display:flex;align-items:center;gap:15px"><button class="btn-back" onclick="window.location.href='/'"><i class="fas fa-arrow-left"></i> На главную</button><h1><i class="fas fa-cut"></i> Barbershop Admin</h1></div><div><span id="adminName"></span><button class="btn-danger" onclick="logout()" style="margin-left:15px;padding:8px 16px"><i class="fas fa-sign-out-alt"></i> Выйти</button></div></div>
-        <div class="stats-grid" id="statsGrid"></div>
-        <div class="tabs"><button class="tab-btn active" onclick="showTab('barbers')"><i class="fas fa-users"></i> Барберы</button><button class="tab-btn" onclick="showTab('users')"><i class="fas fa-user-friends"></i> Пользователи</button><button class="tab-btn" onclick="showTab('appointments')"><i class="fas fa-calendar-check"></i> Записи</button></div>
-        <div id="tab-barbers" class="tab-content active"><div style="display:flex;justify-content:space-between;margin-bottom:20px;flex-wrap:wrap;gap:10px"><h2><i class="fas fa-cut"></i> Управление барберами</h2><button class="btn" onclick="openBarberModal()"><i class="fas fa-plus"></i> Добавить барбера</button></div><div id="barbersList" class="barbers-grid"></div></div>
-        <div id="tab-users" class="tab-content"><h2><i class="fas fa-users"></i> Пользователи</h2><div style="overflow-x:auto"><table id="usersTable"><thead><tr><th>ID</th><th>Аватар</th><th>Имя</th><th>Email</th><th>Записей</th><th>Действия</th></tr></thead><tbody id="usersBody"></tbody></table></div></div>
-        <div id="tab-appointments" class="tab-content"><h2><i class="fas fa-calendar-alt"></i> Все записи</h2><div style="overflow-x:auto"><table id="appointmentsTable"><thead><tr><th>Дата</th><th>Время</th><th>Клиент</th><th>Барбер</th><th>Услуга</th><th>Сумма</th><th>Статус</th><th>Действия</th></tr></thead><tbody id="appointmentsBody"></tbody></table></div></div>
+    <div id="loginScreen" class="login-container" style="display:flex">
+        <div class="login-card">
+            <i class="fas fa-cut" style="font-size:60px;color:#667eea"></i>
+            <h2>Вход в админ-панель</h2>
+            <input type="password" id="adminPassword" placeholder="Введите пароль">
+            <button class="btn" onclick="login()">Войти</button>
+            <div id="loginError" style="color:#e74c3c;margin-top:10px;display:none"></div>
+        </div>
     </div>
-    <div id="barberModal" class="modal"><div class="modal-content"><h3 id="modalTitle">Добавить барбера</h3><form id="barberForm"><input type="hidden" id="barberId"><div class="form-group"><label>Имя</label><input type="text" id="barberName" required></div><div class="form-group"><label>Специализация</label><input type="text" id="barberSpecialization"></div><div class="form-group"><label>Опыт (лет)</label><input type="number" id="barberExperience"></div><div class="form-group"><label>Фото URL</label><input type="text" id="barberPhoto" value="https://randomuser.me/api/portraits/men/1.jpg"></div><div class="form-group"><label>Начало работы</label><input type="time" id="barberWorkStart" value="10:00"></div><div class="form-group"><label>Конец работы</label><input type="time" id="barberWorkEnd" value="20:00"></div><div class="form-group"><label>Начало перерыва</label><input type="time" id="barberBreakStart"></div><div class="form-group"><label>Конец перерыва</label><input type="time" id="barberBreakEnd"></div><div style="display:flex;gap:10px;margin-top:20px"><button type="submit" class="btn">Сохранить</button><button type="button" class="btn-danger" onclick="closeBarberModal()">Отмена</button></div></form></div></div>
+    
+    <div id="adminPanel" class="admin-container" style="display:none">
+        <div class="header">
+            <div><span id="adminName"></span><button class="btn-danger" onclick="logout()" style="margin-left:15px;padding:8px 16px"><i class="fas fa-sign-out-alt"></i> Выйти</button></div>
+        </div>
+        
+        <div class="stats-grid" id="statsGrid"></div>
+        
+        <div class="tabs">
+            <button class="tab-btn active" onclick="showTab('barbers')"><i class="fas fa-users"></i> Барберы</button>
+            <button class="tab-btn" onclick="showTab('users')"><i class="fas fa-user-friends"></i> Пользователи</button>
+            <button class="tab-btn" onclick="showTab('appointments')"><i class="fas fa-calendar-check"></i> Все записи</button>
+        </div>
+        
+        <div id="tab-barbers" class="tab-content active">
+            <div style="display:flex;justify-content:space-between;margin-bottom:20px;flex-wrap:wrap;gap:10px">
+                <h2><i class="fas fa-cut"></i> Управление барберами</h2>
+                <button class="btn" onclick="openBarberModal()"><i class="fas fa-plus"></i> Добавить барбера</button>
+            </div>
+            <div id="barbersList" class="barbers-grid"></div>
+        </div>
+        
+        <div id="tab-users" class="tab-content">
+            <h2><i class="fas fa-users"></i> Пользователи</h2>
+            <div style="overflow-x:auto"><table id="usersTable"><thead><tr><th>ID</th><th>Имя</th><th>Email</th><th>Телефон</th><th>Записей</th><th>Действия</th></tr></thead><tbody id="usersBody"></tbody></table></div>
+        </div>
+        
+        <div id="tab-appointments" class="tab-content">
+            <h2><i class="fas fa-calendar-alt"></i> Все записи</h2>
+            <div style="overflow-x:auto"><table id="appointmentsTable"><thead><tr><th>Дата</th><th>Время</th><th>Клиент</th><th>Телефон</th><th>Барбер</th><th>Услуга</th><th>Сумма</th><th>Статус</th><th>Действия</th></tr></thead><tbody id="appointmentsBody"></tbody></table></div>
+        </div>
+    </div>
+    
+    <div id="barberModal" class="modal"><div class="modal-content"><h3 id="modalTitle">Добавить барбера</h3><form id="barberForm"><input type="hidden" id="barberId"><div class="form-group"><label>Имя</label><input type="text" id="barberName" required></div><div class="form-group"><label>Специализация</label><input type="text" id="barberSpecialization"></div><div class="form-group"><label>Опыт (лет)</label><input type="number" id="barberExperience"></div><div class="form-group"><label>Начало работы</label><input type="time" id="barberWorkStart" value="10:00"></div><div class="form-group"><label>Конец работы</label><input type="time" id="barberWorkEnd" value="20:00"></div><div class="form-group"><label>Начало перерыва</label><input type="time" id="barberBreakStart"></div><div class="form-group"><label>Конец перерыва</label><input type="time" id="barberBreakEnd"></div><div style="display:flex;gap:10px;margin-top:20px"><button type="submit" class="btn">Сохранить</button><button type="button" class="btn-danger" onclick="closeBarberModal()">Отмена</button></div></form></div></div>
+    
     <div id="serviceModal" class="modal"><div class="modal-content"><h3 id="serviceModalTitle">Добавить услугу</h3><form id="serviceForm"><input type="hidden" id="serviceId"><input type="hidden" id="serviceMasterId"><div class="form-group"><label>Название услуги</label><input type="text" id="serviceName" required></div><div class="form-group"><label>Цена (₸)</label><input type="number" id="servicePrice" required></div><div class="form-group"><label>Длительность (мин)</label><input type="number" id="serviceDuration" required></div><div style="display:flex;gap:10px;margin-top:20px"><button type="submit" class="btn">Сохранить</button><button type="button" class="btn-danger" onclick="closeServiceModal()">Отмена</button></div></form></div></div>
+    
     <script>
-        let currentMasterId=null;
-        async function checkAdmin(){const r=await fetch('/api/auth/check'),d=await r.json();if(d.isAdmin){document.getElementById('adminName').innerText=d.name||'Admin';loadStats();loadBarbers();loadUsers();loadAppointments()}else{const e=prompt('Введите email администратора (microsgamer850@gmail.com):');if(e==='microsgamer850@gmail.com'){await fetch('/api/auth/admin/login',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({email:e})});location.reload()}else{alert('Неверный email');window.location.href='/'}}}
+        async function login(){const p=document.getElementById('adminPassword').value;if(!p){document.getElementById('loginError').innerText='Введите пароль';document.getElementById('loginError').style.display='block';return}const r=await fetch('/api/auth/admin/login',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({password:p})});const d=await r.json();if(d.success){document.getElementById('loginScreen').style.display='none';document.getElementById('adminPanel').style.display='block';document.getElementById('adminName').innerText='Администратор';loadStats();loadBarbers();loadUsers();loadAppointments()}else{document.getElementById('loginError').innerText='Неверный пароль';document.getElementById('loginError').style.display='block'}}
+        
         async function logout(){await fetch('/api/auth/logout');location.reload()}
+        
         async function loadStats(){const r=await fetch('/api/stats'),s=await r.json();document.getElementById('statsGrid').innerHTML='<div class="stat-card"><i class="fas fa-users" style="font-size:30px;color:#667eea"></i><div><h3>'+s.clients+'</h3><p>Клиентов</p></div></div><div class="stat-card"><i class="fas fa-calendar" style="font-size:30px;color:#667eea"></i><div><h3>'+s.appointments+'</h3><p>Записей</p></div></div><div class="stat-card"><i class="fas fa-calendar-day" style="font-size:30px;color:#667eea"></i><div><h3>'+s.today+'</h3><p>Сегодня</p></div></div><div class="stat-card"><i class="fas fa-tenge-sign" style="font-size:30px;color:#667eea"></i><div><h3>'+s.revenue.toLocaleString()+' ₸</h3><p>Выручка</p></div></div>'}
-        async function loadBarbers(){const r=await fetch('/api/masters'),b=await r.json();document.getElementById('barbersList').innerHTML=b.map(b=>'<div class="barber-card"><div style="display:flex;justify-content:space-between;flex-wrap:wrap;gap:10px"><div><h3><i class="fas fa-user-astronaut"></i> '+b.name+'</h3><p>'+(b.specialization||'Универсал')+'</p><p>⭐ '+(b.experience||0)+' лет</p><p>🕐 '+(b.work_start?.substring(0,5)||'10:00')+' - '+(b.work_end?.substring(0,5)||'20:00')+'</p></div><div><button class="btn btn-sm" onclick="editBarber('+b.id+')"><i class="fas fa-edit"></i></button><button class="btn-danger btn-sm" onclick="deleteBarber('+b.id+')"><i class="fas fa-trash"></i></button></div></div><div style="margin-top:15px"><button class="btn btn-sm" onclick="openServiceModal('+b.id+')"><i class="fas fa-plus"></i> Добавить услугу</button></div><div id="services-'+b.id+'" style="margin-top:10px"></div></div>').join('');for(const b of b){const r=await fetch('/api/masters/'+b.id+'/services'),s=await r.json();const c=document.getElementById('services-'+b.id);if(s.length){c.innerHTML=s.map(s=>'<div style="background:white;padding:10px;border-radius:10px;margin-top:8px;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px"><span><strong>'+s.name+'</strong> - <span class="price">'+s.price.toLocaleString()+' ₸</span> ('+s.duration+' мин)</span><button class="btn-danger btn-sm" onclick="deleteService('+b.id+','+s.id+')"><i class="fas fa-trash"></i></button></div>').join('')}}}
-        function openBarberModal(b){const m=document.getElementById('barberModal');m.style.display='flex';if(b){document.getElementById('modalTitle').innerText='Редактировать барбера';document.getElementById('barberId').value=b.id;document.getElementById('barberName').value=b.name;document.getElementById('barberSpecialization').value=b.specialization||'';document.getElementById('barberExperience').value=b.experience||'';document.getElementById('barberPhoto').value=b.photo_url||'';document.getElementById('barberWorkStart').value=b.work_start?.substring(0,5)||'10:00';document.getElementById('barberWorkEnd').value=b.work_end?.substring(0,5)||'20:00';document.getElementById('barberBreakStart').value=b.break_start?.substring(0,5)||'';document.getElementById('barberBreakEnd').value=b.break_end?.substring(0,5)||''}else{document.getElementById('modalTitle').innerText='Добавить барбера';document.getElementById('barberForm').reset();document.getElementById('barberId').value=''}}
+        
+        async function loadBarbers(){const r=await fetch('/api/masters'),b=await r.json();const container=document.getElementById('barbersList');container.innerHTML='';for(const barber of b){const servicesRes=await fetch('/api/masters/'+barber.id+'/services');const services=await servicesRes.json();const appointmentsRes=await fetch('/api/masters/'+barber.id+'/active-appointments');const appointments=await appointmentsRes.json();const card=document.createElement('div');card.className='barber-card';card.innerHTML='<div class="barber-header"><div><div class="barber-name">✂️ '+barber.name+'</div><div class="barber-spec">'+(barber.specialization||'Универсал')+'</div><div class="barber-time">⭐ '+(barber.experience||0)+' лет | 🕐 '+(barber.work_start?.substring(0,5)||'10:00')+' - '+(barber.work_end?.substring(0,5)||'20:00')+'</div></div><div><button class="btn btn-sm" onclick="editBarber('+barber.id+')"><i class="fas fa-edit"></i></button><button class="btn-danger btn-sm" onclick="deleteBarber('+barber.id+')"><i class="fas fa-trash"></i></button></div></div><div style="margin-bottom:10px"><button class="btn btn-sm" onclick="openServiceModal('+barber.id+')"><i class="fas fa-plus"></i> Добавить услугу</button></div><div id="services-'+barber.id+'" style="margin-bottom:10px"></div><div class="section-title"><i class="fas fa-calendar-check"></i> Активные записи ('+appointments.length+'):</div><div id="appointments-'+barber.id+'" class="appointments-list"></div>';container.appendChild(card);const servicesDiv=document.getElementById('services-'+barber.id);if(services.length){servicesDiv.innerHTML=services.map(s=>'<div style="background:white;padding:10px;border-radius:10px;margin-top:8px;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px"><span><strong>'+s.name+'</strong> - <span class="price">'+parseInt(s.price).toLocaleString()+' ₸</span> ('+s.duration+' мин)</span><button class="btn-danger btn-sm" onclick="deleteService('+barber.id+','+s.id+')"><i class="fas fa-trash"></i></button></div>').join('')}else{servicesDiv.innerHTML='<div style="background:#f8f9fa;padding:10px;border-radius:10px;text-align:center;color:#999">Нет услуг</div>'}const appointmentsDiv=document.getElementById('appointments-'+barber.id);if(appointments.length){appointmentsDiv.innerHTML=appointments.map(a=>'<div class="appointment-item-admin"><strong>📅 '+new Date(a.appointment_date).toLocaleDateString()+' в '+a.appointment_time.substring(0,5)+'</strong><br>👤 '+a.client_name+' ('+a.phone+')<br>✂️ '+a.service_name+' ('+parseInt(a.price).toLocaleString()+' ₸)<br><span class="status-'+a.status+'">'+getStatusText(a.status)+'</span></div>').join('')}else{appointmentsDiv.innerHTML='<div class="no-appointments">📭 Нет активных записей</div>'}}}
+        
+        function getStatusText(s){const t={pending:'⏳ Ожидает',confirmed:'✅ Подтверждена',completed:'✨ Выполнена',cancelled:'❌ Отменена'};return t[s]||s}
+        
+        function openBarberModal(b){const m=document.getElementById('barberModal');m.style.display='flex';if(b){document.getElementById('modalTitle').innerText='Редактировать барбера';document.getElementById('barberId').value=b.id;document.getElementById('barberName').value=b.name;document.getElementById('barberSpecialization').value=b.specialization||'';document.getElementById('barberExperience').value=b.experience||'';document.getElementById('barberWorkStart').value=b.work_start?.substring(0,5)||'10:00';document.getElementById('barberWorkEnd').value=b.work_end?.substring(0,5)||'20:00';document.getElementById('barberBreakStart').value=b.break_start?.substring(0,5)||'';document.getElementById('barberBreakEnd').value=b.break_end?.substring(0,5)||''}else{document.getElementById('modalTitle').innerText='Добавить барбера';document.getElementById('barberForm').reset();document.getElementById('barberId').value=''}}
+        
         function closeBarberModal(){document.getElementById('barberModal').style.display='none'}
-        document.getElementById('barberForm').onsubmit=async(e)=>{e.preventDefault();const d={name:document.getElementById('barberName').value,specialization:document.getElementById('barberSpecialization').value,experience:document.getElementById('barberExperience').value,photo_url:document.getElementById('barberPhoto').value,work_start:document.getElementById('barberWorkStart').value,work_end:document.getElementById('barberWorkEnd').value,break_start:document.getElementById('barberBreakStart').value||null,break_end:document.getElementById('barberBreakEnd').value||null},i=document.getElementById('barberId').value;if(i)await fetch('/api/masters/'+i,{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify(d)});else await fetch('/api/masters',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(d)});closeBarberModal();loadBarbers()};
+        
+        document.getElementById('barberForm').onsubmit=async(e)=>{e.preventDefault();const d={name:document.getElementById('barberName').value,specialization:document.getElementById('barberSpecialization').value,experience:document.getElementById('barberExperience').value,work_start:document.getElementById('barberWorkStart').value,work_end:document.getElementById('barberWorkEnd').value,break_start:document.getElementById('barberBreakStart').value||null,break_end:document.getElementById('barberBreakEnd').value||null},i=document.getElementById('barberId').value;if(i)await fetch('/api/masters/'+i,{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify(d)});else await fetch('/api/masters',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(d)});closeBarberModal();loadBarbers()};
+        
         async function editBarber(i){const r=await fetch('/api/masters'),b=await r.json(),c=b.find(b=>b.id==i);openBarberModal(c)}
+        
         async function deleteBarber(i){if(confirm('Удалить барбера? Все его услуги и записи будут удалены!')){await fetch('/api/masters/'+i,{method:'DELETE'});loadBarbers()}}
+        
         function openServiceModal(m){currentMasterId=m;document.getElementById('serviceModalTitle').innerText='Добавить услугу';document.getElementById('serviceForm').reset();document.getElementById('serviceId').value='';document.getElementById('serviceMasterId').value=m;document.getElementById('serviceModal').style.display='flex'}
+        
         function closeServiceModal(){document.getElementById('serviceModal').style.display='none';currentMasterId=null}
+        
         document.getElementById('serviceForm').onsubmit=async(e)=>{e.preventDefault();const m=document.getElementById('serviceMasterId').value,d={name:document.getElementById('serviceName').value,price:document.getElementById('servicePrice').value,duration:document.getElementById('serviceDuration').value};await fetch('/api/masters/'+m+'/services',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(d)});closeServiceModal();loadBarbers()};
+        
         async function deleteService(m,s){if(confirm('Удалить услугу?')){await fetch('/api/masters/'+m+'/services/'+s,{method:'DELETE'});loadBarbers()}}
-        async function loadUsers(){const r=await fetch('/api/users'),u=await r.json();document.getElementById('usersBody').innerHTML=u.map(u=>'<tr><td>'+u.id+'</td><td>'+(u.photo?'<img src="'+u.photo+'" style="width:40px;height:40px;border-radius:50%">':'<i class="fas fa-user-circle" style="font-size:30px"></i>')+'</td><td>'+u.name+'</td><td>'+u.email+'</td><td>'+(u.total_appointments||0)+'</td><td><button class="btn-danger btn-sm" onclick="deleteUser('+u.id+')"><i class="fas fa-trash"></i> Удалить</button></td></tr>').join('')}
-        async function deleteUser(i){if(confirm('Удалить пользователя? Все его записи также будут удалены!')){await fetch('/api/users/'+i,{method:'DELETE'});loadUsers();loadStats()}}
-        async function loadAppointments(){const r=await fetch('/api/appointments'),a=await r.json();document.getElementById('appointmentsBody').innerHTML=a.map(a=>'<tr><td>'+a.appointment_date+'</td><td>'+(a.appointment_time?.substring(0,5)||'')+'</td><td>'+a.client_name+'</td><td>'+a.master_name+'</td><td>'+(a.service_name||'-')+'</td><td class="price">'+((a.service_price||0).toLocaleString())+' ₸</td><td><select onchange="updateStatus('+a.id+', this.value)" style="padding:5px;border-radius:8px"><option value="pending" '+(a.status==='pending'?'selected':'')+'>⏳ Ожидает</option><option value="confirmed" '+(a.status==='confirmed'?'selected':'')+'>✅ Подтверждена</option><option value="completed" '+(a.status==='completed'?'selected':'')+'>✨ Выполнена</option><option value="cancelled" '+(a.status==='cancelled'?'selected':'')+'>❌ Отменена</option></select></td><td><button class="btn-danger btn-sm" onclick="deleteAppointment('+a.id+')"><i class="fas fa-trash"></i></button></td></tr>').join('')}
-        async function updateStatus(i,s){await fetch('/api/appointments/'+i+'/status',{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify({status:s})});loadAppointments();loadStats()}
-        async function deleteAppointment(i){if(confirm('Удалить запись?')){await fetch('/api/appointments/'+i,{method:'DELETE'});loadAppointments();loadStats()}}
+        
+        async function loadUsers(){const r=await fetch('/api/users'),u=await r.json();document.getElementById('usersBody').innerHTML=u.map(u=>'<tr><td>'+u.id+'</td><td>'+u.name+'</td><td>'+u.email+'</td><td>'+(u.phone||'-')+'</td><td>'+(u.total_appointments||0)+'</td><td><button class="btn-danger btn-sm" onclick="deleteUser('+u.id+')"><i class="fas fa-trash"></i> Удалить</button></td></tr>').join('')}
+        
+        async function deleteUser(i){if(confirm('Удалить пользователя?')){await fetch('/api/users/'+i,{method:'DELETE'});loadUsers();loadStats()}}
+        
+        async function loadAppointments(){const r=await fetch('/api/appointments'),a=await r.json();document.getElementById('appointmentsBody').innerHTML=a.map(a=>'<tr><td>'+new Date(a.appointment_date).toLocaleDateString()+'</td><td>'+a.appointment_time?.substring(0,5)+'</td><td>'+a.client_name+'</td><td>'+(a.phone||'-')+'</td><td>'+a.master_name+'</td><td>'+(a.service_name||'-')+'<td><td class="price">'+parseInt(a.service_price).toLocaleString()+' ₸</td><td><select onchange="updateStatus('+a.id+', this.value)" style="padding:5px;border-radius:8px"><option value="pending" '+(a.status==='pending'?'selected':'')+'>⏳ Ожидает</option><option value="confirmed" '+(a.status==='confirmed'?'selected':'')+'>✅ Подтверждена</option><option value="completed" '+(a.status==='completed'?'selected':'')+'>✨ Выполнена</option><option value="cancelled" '+(a.status==='cancelled'?'selected':'')+'>❌ Отменена</option></select></td><td><button class="btn-danger btn-sm" onclick="deleteAppointment('+a.id+')"><i class="fas fa-trash"></i></button></td></tr>').join('')}
+        
+        async function updateStatus(i,s){await fetch('/api/appointments/'+i+'/status',{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify({status:s})});loadAppointments();loadStats();loadBarbers()}
+        
+        async function deleteAppointment(i){if(confirm('Удалить запись?')){await fetch('/api/appointments/'+i,{method:'DELETE'});loadAppointments();loadStats();loadBarbers()}}
+        
         function showTab(t){document.querySelectorAll('.tab-content').forEach(c=>c.classList.remove('active'));document.querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('active'));document.getElementById('tab-'+t).classList.add('active');event.target.classList.add('active')}
-        checkAdmin();
+        
+        fetch('/api/auth/check').then(r=>r.json()).then(data=>{if(data.isAdmin){document.getElementById('loginScreen').style.display='none';document.getElementById('adminPanel').style.display='block';document.getElementById('adminName').innerText='Администратор';loadStats();loadBarbers();loadUsers();loadAppointments()}});
     </script>
 </body>
 </html>
