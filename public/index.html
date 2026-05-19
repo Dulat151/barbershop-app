@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
-    <title>Барбершоп - Запись онлайн</title>
+    <title>Barbershop - Book Online</title>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
@@ -46,6 +46,7 @@
         .error-message{background:#f8d7da;color:#721c24;padding:15px;border-radius:12px;margin:20px;text-align:center;display:none}
         .retry-btn{background:#667eea;margin-top:10px;padding:8px 16px}
         .required{color:#e74c3c}
+        .day-off-badge{background:#e74c3c;color:white;padding:2px 8px;border-radius:20px;font-size:10px;display:inline-block;margin-top:5px}
         @media(max-width:768px){
             .booking-form{padding:20px}
             .masters-grid{grid-template-columns:1fr}
@@ -55,26 +56,26 @@
 </head>
 <body>
     <div class="container">
-        <header><h1>✂️ Барбершоп "Классика"</h1><p>Профессиональная стрижка и уход</p></header>
-        <div class="nav-bar"><button class="btn-back" id="backBtn" style="display:none"><i class="fas fa-arrow-left"></i> Назад</button><div id="navUserInfo"></div></div>
-        <div id="mainContent" class="booking-form"><div class="loading"><i class="fas fa-spinner fa-spin"></i> Загрузка...</div></div>
+        <header><h1>✂️ Barber Shop "Classic"</h1><p>Professional haircut and grooming</p></header>
+        <div class="nav-bar"><button class="btn-back" id="backBtn" style="display:none"><i class="fas fa-arrow-left"></i> Back</button><div id="navUserInfo"></div></div>
+        <div id="mainContent" class="booking-form"><div class="loading"><i class="fas fa-spinner fa-spin"></i> Loading...</div></div>
     </div>
     <div id="errorToast" class="error-message"></div>
     <script src="https://accounts.google.com/gsi/client" async defer></script>
     <script>
         let selectedMaster=null,selectedService=null,selectedDate=null,selectedTime=null,currentUser=null,currentStep=1;
         
-        function showError(msg){const toast=document.getElementById('errorToast');toast.innerHTML=msg+' <button class="retry-btn" onclick="location.reload()">Обновить</button>';toast.style.display='block';setTimeout(()=>{toast.style.display='none'},8000);}
+        function showError(msg){const toast=document.getElementById('errorToast');toast.innerHTML=msg+' <button class="retry-btn" onclick="location.reload()">Refresh</button>';toast.style.display='block';setTimeout(()=>{toast.style.display='none'},8000);}
         
         async function fetchWithRetry(url,retries=3){for(let i=0;i<retries;i++){try{const res=await fetch(url);if(res.ok)return res;if(res.status===502&&i<retries-1){await new Promise(r=>setTimeout(r,2000));continue}return res;}catch(e){if(i===retries-1)throw e;await new Promise(r=>setTimeout(r,2000));}}}
         
         async function checkAuth(){const r=await fetch('/api/auth/check'),d=await r.json();if(d.isAuthenticated){currentUser=d.user;showBookingInterface()}else showAuthScreen();updateNavBar()}
         
-        function showAuthScreen(){document.getElementById('mainContent').innerHTML='<div class="auth-container"><div class="auth-card"><div style="font-size:60px">✂️</div><h2>Добро пожаловать!</h2><p style="color:#666;margin-bottom:30px">Войдите через Google чтобы продолжить</p><div id="googleButton"></div></div></div>';google.accounts.id.initialize({client_id:'615787033029-8scnkebqknccvuvs4blm7r82814eef3m.apps.googleusercontent.com',callback:handleGoogleLogin});google.accounts.id.renderButton(document.getElementById('googleButton'),{type:'standard',theme:'outline',size:'large',text:'signin_with'})}
+        function showAuthScreen(){document.getElementById('mainContent').innerHTML='<div class="auth-container"><div class="auth-card"><div style="font-size:60px">✂️</div><h2>Welcome!</h2><p style="color:#666;margin-bottom:30px">Sign in with Google to continue</p><div id="googleButton"></div></div></div>';google.accounts.id.initialize({client_id:'615787033029-8scnkebqknccvuvs4blm7r82814eef3m.apps.googleusercontent.com',callback:handleGoogleLogin});google.accounts.id.renderButton(document.getElementById('googleButton'),{type:'standard',theme:'outline',size:'large',text:'signin_with'})}
         
-        async function handleGoogleLogin(r){const a=await fetch('/api/auth/google',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({credential:r.credential})}),d=await a.json();if(d.success){currentUser=d.user;showBookingInterface();updateNavBar()}else showError('Ошибка входа: '+d.error)}
+        async function handleGoogleLogin(r){const a=await fetch('/api/auth/google',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({credential:r.credential})}),d=await a.json();if(d.success){currentUser=d.user;showBookingInterface();updateNavBar()}else showError('Login error: '+d.error)}
         
-        function updateNavBar(){const n=document.getElementById('navUserInfo');if(currentUser)n.innerHTML='<div class="user-info"><span>👤 '+currentUser.name+'</span>'+(currentUser.phone?'<span>📞 '+currentUser.phone+'</span>':'')+'<button class="logout-btn" onclick="logout()"><i class="fas fa-sign-out-alt"></i> Выйти</button></div>';else n.innerHTML=''}
+        function updateNavBar(){const n=document.getElementById('navUserInfo');if(currentUser)n.innerHTML='<div class="user-info"><span>👤 '+currentUser.name+'</span>'+(currentUser.phone?'<span>📞 '+currentUser.phone+'</span>':'')+'<button class="logout-btn" onclick="logout()"><i class="fas fa-sign-out-alt"></i> Logout</button></div>';else n.innerHTML=''}
         
         async function logout(){await fetch('/api/auth/logout');location.reload()}
         
@@ -82,29 +83,29 @@
         
         function goBack(){if(currentStep>1){currentStep--;showStep(currentStep);showBackButton(currentStep>1)}}
         
-        async function showBookingInterface(){const c=document.getElementById('mainContent');c.innerHTML='<div class="step active" id="step1"><h2><i class="fas fa-tshirt"></i> Шаг 1: Выберите мастера</h2><div class="masters-grid" id="mastersGrid"></div></div><div class="step" id="step2"><h2><i class="fas fa-cut"></i> Шаг 2: Выберите услугу</h2><div class="services-list" id="servicesList"></div></div><div class="step" id="step3"><h2><i class="fas fa-calendar"></i> Шаг 3: Выберите дату и время</h2><input type="date" id="appointmentDate" min=""><div class="time-slots" id="timeSlots"></div></div><div class="step" id="step4"><h2><i class="fas fa-phone"></i> Шаг 4: Контактные данные и пожелания</h2><form id="bookingForm"><input type="tel" id="clientPhone" placeholder="📞 Номер телефона *" value="'+(currentUser?.phone||'')+'" required><textarea id="notes" placeholder="Пожелания к стрижке (необязательно)" rows="3"></textarea><button type="submit"><i class="fas fa-check"></i> Записаться</button></form></div><div id="myAppointments" class="my-appointments"></div>';await loadMasters();await loadMyAppointments();setupBookingHandlers();currentStep=1;showBackButton(false)}
+        async function showBookingInterface(){const c=document.getElementById('mainContent');c.innerHTML='<div class="step active" id="step1"><h2><i class="fas fa-tshirt"></i> Step 1: Choose Barber</h2><div class="masters-grid" id="mastersGrid"></div></div><div class="step" id="step2"><h2><i class="fas fa-cut"></i> Step 2: Choose Service</h2><div class="services-list" id="servicesList"></div></div><div class="step" id="step3"><h2><i class="fas fa-calendar"></i> Step 3: Choose Date & Time</h2><input type="date" id="appointmentDate" min=""><div class="time-slots" id="timeSlots"></div></div><div class="step" id="step4"><h2><i class="fas fa-phone"></i> Step 4: Contact & Notes</h2><form id="bookingForm"><input type="tel" id="clientPhone" placeholder="📞 Phone Number *" value="'+(currentUser?.phone||'')+'" required><textarea id="notes" placeholder="Additional notes (optional)" rows="3"></textarea><button type="submit"><i class="fas fa-check"></i> Book Now</button></form></div><div id="myAppointments" class="my-appointments"></div>';await loadMasters();await loadMyAppointments();setupBookingHandlers();currentStep=1;showBackButton(false)}
         
-        async function loadMasters(){const r=await fetchWithRetry('/api/masters');if(!r.ok){document.getElementById('mastersGrid').innerHTML='<p style="color:red">Ошибка загрузки. <button onclick="location.reload()">Обновить</button></p>';return}const m=await r.json();document.getElementById('mastersGrid').innerHTML=m.map(m=>'<div class="master-card" data-id="'+m.id+'"><h3>✂️ '+m.name+'</h3><p>'+(m.specialization||'Универсал')+'</p><p>⭐ '+(m.experience||0)+' лет</p><small>🕐 '+(m.work_start?.substring(0,5)||'10:00')+' - '+(m.work_end?.substring(0,5)||'20:00')+'</small></div>').join('');document.querySelectorAll('.master-card').forEach(c=>c.onclick=()=>selectMaster(c))}
+        async function loadMasters(){const r=await fetchWithRetry('/api/masters');if(!r.ok){document.getElementById('mastersGrid').innerHTML='<p style="color:red">Error loading. <button onclick="location.reload()">Refresh</button></p>';return}const m=await r.json();document.getElementById('mastersGrid').innerHTML=m.map(m=>'<div class="master-card" data-id="'+m.id+'"><h3>✂️ '+m.name+'</h3><p>'+(m.specialization||'General')+'</p><p>⭐ '+(m.experience||0)+' years</p><small>🕐 '+(m.work_start?.substring(0,5)||'10:00')+' - '+(m.work_end?.substring(0,5)||'20:00')+'</small>'+(m.day_off?'<div class="day-off-badge">Day off: '+m.day_off+'</div>':'')+'</div>').join('');document.querySelectorAll('.master-card').forEach(c=>c.onclick=()=>selectMaster(c))}
         
         function selectMaster(c){document.querySelectorAll('.master-card').forEach(c=>c.classList.remove('selected'));c.classList.add('selected');selectedMaster={id:c.dataset.id,name:c.querySelector('h3').innerText};currentStep=2;showStep(currentStep);showBackButton(true);loadServicesForMaster(selectedMaster.id)}
         
-        async function loadServicesForMaster(i){const r=await fetch('/api/masters/'+i+'/services');if(!r.ok){document.getElementById('servicesList').innerHTML='<p style="color:red">Ошибка загрузки услуг</p>';return}const s=await r.json();const l=document.getElementById('servicesList');if(!s.length){l.innerHTML='<p>У этого мастера пока нет услуг</p>';return}l.innerHTML=s.map(s=>'<div class="service-item" data-id="'+s.id+'" data-price="'+s.price+'"><div><strong>'+s.name+'</strong><br>⏱️ '+s.duration+' мин</div><div class="price">'+parseInt(s.price).toLocaleString()+' ₸</div></div>').join('');document.querySelectorAll('.service-item').forEach(i=>i.onclick=()=>selectService(i))}
+        async function loadServicesForMaster(i){const r=await fetch('/api/masters/'+i+'/services');if(!r.ok){document.getElementById('servicesList').innerHTML='<p style="color:red">Error loading services</p>';return}const s=await r.json();const l=document.getElementById('servicesList');if(!s.length){l.innerHTML='<p>No services available for this barber</p>';return}l.innerHTML=s.map(s=>'<div class="service-item" data-id="'+s.id+'" data-price="'+s.price+'"><div><strong>'+s.name+'</strong><br>⏱️ '+s.duration+' min</div><div class="price">'+parseInt(s.price).toLocaleString()+' ₸</div></div>').join('');document.querySelectorAll('.service-item').forEach(i=>i.onclick=()=>selectService(i))}
         
         function selectService(i){document.querySelectorAll('.service-item').forEach(s=>s.classList.remove('selected'));i.classList.add('selected');selectedService={id:i.dataset.id,price:i.dataset.price};currentStep=3;showStep(currentStep);setupDate()}
         
         function setupDate(){const t=new Date().toISOString().split('T')[0],d=document.getElementById('appointmentDate');d.min=t;d.value=t;d.onchange=e=>loadTimeSlots(e.target.value);loadTimeSlots(t)}
         
-        async function loadTimeSlots(d){selectedDate=d;const r=await fetch('/api/available-slots/'+selectedMaster.id+'/'+d);if(!r.ok){document.getElementById('timeSlots').innerHTML='<p style="color:red">Ошибка загрузки. <button onclick="loadTimeSlots(\''+d+'\')">Повторить</button></p>';return}const s=await r.json();const c=document.getElementById('timeSlots');if(!s.length){c.innerHTML='<p>😞 Нет свободных слотов на этот день</p>';return}c.innerHTML=s.map(s=>'<div class="time-slot" data-time="'+s+'">'+s.substring(0,5)+'</div>').join('');document.querySelectorAll('.time-slot').forEach(s=>s.onclick=()=>selectTime(s))}
+        async function loadTimeSlots(d){selectedDate=d;const r=await fetch('/api/available-slots/'+selectedMaster.id+'/'+d);if(!r.ok){document.getElementById('timeSlots').innerHTML='<p style="color:red">Error loading slots. <button onclick="loadTimeSlots(\''+d+'\')">Retry</button></p>';return}const s=await r.json();const c=document.getElementById('timeSlots');if(!s.length){c.innerHTML='<p>😞 No available slots for this day</p>';return}c.innerHTML=s.map(s=>'<div class="time-slot" data-time="'+s+'">'+s.substring(0,5)+'</div>').join('');document.querySelectorAll('.time-slot').forEach(s=>s.onclick=()=>selectTime(s))}
         
         function selectTime(s){document.querySelectorAll('.time-slot').forEach(s=>s.classList.remove('selected'));s.classList.add('selected');selectedTime=s.dataset.time;currentStep=4;showStep(currentStep)}
         
-        function setupBookingHandlers(){document.getElementById('bookingForm').onsubmit=async(e)=>{e.preventDefault();const phone=document.getElementById('clientPhone').value;if(!phone){alert('Введите номер телефона');return}const notes=document.getElementById('notes').value;const r=await fetch('/api/appointments',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({master_id:selectedMaster.id,master_service_id:selectedService.id,date:selectedDate,time:selectedTime,phone:phone,notes:notes})});if(r.ok){alert('✅ Запись успешно создана!');location.reload()}else{const e=await r.json();alert('❌ '+e.error)}}}
+        function setupBookingHandlers(){document.getElementById('bookingForm').onsubmit=async(e)=>{e.preventDefault();const phone=document.getElementById('clientPhone').value;if(!phone){alert('Please enter your phone number');return}const notes=document.getElementById('notes').value;const r=await fetch('/api/appointments',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({master_id:selectedMaster.id,master_service_id:selectedService.id,date:selectedDate,time:selectedTime,phone:phone,notes:notes})});if(r.ok){alert('✅ Booking successful!');location.reload()}else{const e=await r.json();alert('❌ '+e.error)}}}
         
-        async function loadMyAppointments(){const r=await fetch('/api/my-appointments');if(!r.ok){document.getElementById('myAppointments').innerHTML='<h3>📋 Мои записи</h3><p style="color:red">Ошибка загрузки</p>';return}const a=await r.json();const c=document.getElementById('myAppointments');if(!a.length){c.innerHTML='<h3>📋 Мои записи</h3><p>У вас пока нет записей</p>';return}c.innerHTML='<h3><i class="fas fa-list"></i> Мои записи</h3>'+a.map(a=>'<div class="appointment-item" data-id="'+a.id+'"><div><strong>📅 '+new Date(a.appointment_date).toLocaleDateString()+' в '+a.appointment_time?.substring(0,5)+'</strong><br>💈 Мастер: '+a.master_name+'<br>✂️ Услуга: '+(a.service_name||'-')+' ('+parseInt(a.service_price).toLocaleString()+' ₸)<br>📍 Статус: '+getStatusText(a.status)+'</div><div class="appointment-actions">'+(a.status==='pending'?'<button class="btn-cancel" onclick="cancelAppointment('+a.id+')"><i class="fas fa-times"></i> Отменить</button>':'')+'</div></div>').join('')}
+        async function loadMyAppointments(){const r=await fetch('/api/my-appointments');if(!r.ok){document.getElementById('myAppointments').innerHTML='<h3>📋 My Bookings</h3><p style="color:red">Error loading</p>';return}const a=await r.json();const c=document.getElementById('myAppointments');if(!a.length){c.innerHTML='<h3>📋 My Bookings</h3><p>You have no bookings yet</p>';return}c.innerHTML='<h3><i class="fas fa-list"></i> My Bookings</h3>'+a.map(a=>'<div class="appointment-item" data-id="'+a.id+'"><div><strong>📅 '+new Date(a.appointment_date).toLocaleDateString()+' at '+a.appointment_time?.substring(0,5)+'</strong><br>💈 Barber: '+a.master_name+'<br>✂️ Service: '+(a.service_name||'-')+' ('+parseInt(a.service_price).toLocaleString()+' ₸)<br>📍 Status: '+getStatusText(a.status)+'</div><div class="appointment-actions">'+(a.status==='pending'?'<button class="btn-cancel" onclick="cancelAppointment('+a.id+')"><i class="fas fa-times"></i> Cancel</button>':'')+'</div></div>').join('')}
         
-        function getStatusText(s){const t={pending:'⏳ Ожидает',confirmed:'✅ Подтверждена',completed:'✨ Выполнена',cancelled:'❌ Отменена'};return t[s]||s}
+        function getStatusText(s){const t={pending:'⏳ Pending',confirmed:'✅ Confirmed',completed:'✨ Completed',cancelled:'❌ Cancelled'};return t[s]||s}
         
-        async function cancelAppointment(i){if(confirm('Отменить запись?')){const r=await fetch('/api/appointments/'+i+'/cancel',{method:'PUT'});if(r.ok){alert('✅ Запись отменена');loadMyAppointments()}else alert('❌ Ошибка отмены')}}
+        async function cancelAppointment(i){if(confirm('Cancel this booking?')){const r=await fetch('/api/appointments/'+i+'/cancel',{method:'PUT'});if(r.ok){alert('✅ Booking cancelled');loadMyAppointments()}else alert('❌ Error cancelling')}}
         
         function showStep(s){for(let i=1;i<=4;i++){const e=document.getElementById('step'+i);if(e)e.classList.toggle('active',i===s)}}
         

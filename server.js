@@ -43,10 +43,10 @@ async function deleteOldAppointments() {
             AND status IN ('completed', 'cancelled')
         `);
         if (result.rowCount > 0) {
-            console.log(`🗑️ Удалено ${result.rowCount} старых записей`);
+            console.log(`🗑️ Deleted ${result.rowCount} old appointments`);
         }
     } catch (err) {
-        console.error('❌ Ошибка удаления старых записей:', err.message);
+        console.error('❌ Error deleting old appointments:', err.message);
     }
 }
 
@@ -54,10 +54,9 @@ async function initDatabase() {
     try {
         await pool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS phone VARCHAR(20);`);
         await pool.query(`ALTER TABLE masters ADD COLUMN IF NOT EXISTS day_off VARCHAR(20);`);
-        
-        console.log('✅ База данных готова');
+        console.log('✅ Database ready');
     } catch (err) {
-        console.error('❌ Ошибка инициализации БД:', err.message);
+        console.error('❌ Database init error:', err.message);
     }
 }
 
@@ -65,24 +64,24 @@ setInterval(deleteOldAppointments, 60 * 60 * 1000);
 
 pool.connect(async (err) => {
     if (err) {
-        console.error('❌ Ошибка БД:', err);
+        console.error('❌ DB Error:', err);
     } else {
-        console.log('✅ PostgreSQL подключена');
+        console.log('✅ PostgreSQL connected');
         await initDatabase();
     }
 });
 
 const isAdmin = (req, res, next) => {
     if (req.session.isAdmin) return next();
-    res.status(401).json({ error: 'Не авторизован' });
+    res.status(401).json({ error: 'Unauthorized' });
 };
 
 const isAuthenticated = (req, res, next) => {
     if (req.session.userId) return next();
-    res.status(401).json({ error: 'Требуется авторизация' });
+    res.status(401).json({ error: 'Authentication required' });
 };
 
-// ============ АВТОРИЗАЦИЯ ============
+// ============ AUTH ============
 app.post('/api/auth/google', async (req, res) => {
     const { credential } = req.body;
     if (!credential) return res.status(400).json({ error: 'No credential provided' });
@@ -107,7 +106,7 @@ app.post('/api/auth/google', async (req, res) => {
 
         res.json({ success: true, user: { id: user.rows[0].id, name: user.rows[0].name, email: user.rows[0].email, phone: user.rows[0].phone }, isAdmin: req.session.isAdmin, needPhone: !user.rows[0].phone });
     } catch (error) {
-        res.status(401).json({ error: 'Ошибка авторизации' });
+        res.status(401).json({ error: 'Auth error' });
     }
 });
 
@@ -118,7 +117,7 @@ app.post('/api/auth/update-phone', isAuthenticated, async (req, res) => {
         req.session.userPhone = phone;
         res.json({ success: true });
     } catch (error) {
-        res.status(500).json({ error: 'Ошибка сохранения телефона' });
+        res.status(500).json({ error: 'Error saving phone' });
     }
 });
 
@@ -126,11 +125,11 @@ app.post('/api/auth/admin/login', async (req, res) => {
     const { password } = req.body;
     if (password === '112233') {
         req.session.isAdmin = true;
-        req.session.userName = 'Администратор';
+        req.session.userName = 'Admin';
         req.session.save();
         res.json({ success: true });
     } else {
-        res.status(401).json({ error: 'Неверный пароль' });
+        res.status(401).json({ error: 'Wrong password' });
     }
 });
 
@@ -147,13 +146,13 @@ app.get('/api/auth/check', (req, res) => {
     });
 });
 
-// ============ БАРБЕРЫ ============
+// ============ BARBERS ============
 app.get('/api/masters', async (req, res) => {
     try {
         const result = await pool.query('SELECT * FROM masters ORDER BY id');
         res.json(result.rows);
     } catch (err) {
-        res.status(500).json({ error: 'Ошибка загрузки мастеров' });
+        res.status(500).json({ error: 'Error loading barbers' });
     }
 });
 
@@ -186,17 +185,17 @@ app.get('/api/masters/:id/active-appointments', isAdmin, async (req, res) => {
         `, [req.params.id]);
         res.json(result.rows);
     } catch (err) {
-        res.status(500).json({ error: 'Ошибка загрузки записей' });
+        res.status(500).json({ error: 'Error loading bookings' });
     }
 });
 
-// ============ УСЛУГИ ============
+// ============ SERVICES ============
 app.get('/api/masters/:id/services', async (req, res) => {
     try {
         const result = await pool.query('SELECT * FROM master_services WHERE master_id = $1 ORDER BY price', [req.params.id]);
         res.json(result.rows);
     } catch (err) {
-        res.status(500).json({ error: 'Ошибка загрузки услуг' });
+        res.status(500).json({ error: 'Error loading services' });
     }
 });
 
@@ -217,7 +216,7 @@ app.delete('/api/masters/:masterId/services/:serviceId', isAdmin, async (req, re
     res.json({ success: true });
 });
 
-// ============ ПОЛЬЗОВАТЕЛИ ============
+// ============ USERS ============
 app.get('/api/users', isAdmin, async (req, res) => {
     const result = await pool.query('SELECT u.*, COUNT(a.id) as total_appointments FROM users u LEFT JOIN appointments a ON u.id = a.user_id GROUP BY u.id ORDER BY u.created_at DESC');
     res.json(result.rows);
@@ -228,7 +227,7 @@ app.delete('/api/users/:id', isAdmin, async (req, res) => {
     res.json({ success: true });
 });
 
-// ============ ЗАПИСИ ============
+// ============ APPOINTMENTS ============
 app.get('/api/appointments', isAdmin, async (req, res) => {
     const result = await pool.query(`SELECT a.*, u.name as client_name, u.phone, m.name as master_name, ms.name as service_name, ms.price as service_price FROM appointments a JOIN users u ON a.user_id = u.id JOIN masters m ON a.master_id = m.id LEFT JOIN master_services ms ON a.master_service_id = ms.id ORDER BY a.appointment_date DESC, a.appointment_time`);
     res.json(result.rows);
@@ -258,7 +257,7 @@ app.get('/api/available-slots/:masterId/:date', async (req, res) => {
         }
         res.json(slots);
     } catch (err) {
-        res.status(500).json({ error: 'Ошибка загрузки слотов' });
+        res.status(500).json({ error: 'Error loading slots' });
     }
 });
 
@@ -274,7 +273,7 @@ app.post('/api/appointments', isAuthenticated, async (req, res) => {
         const duplicate = await client.query('SELECT id FROM appointments WHERE master_id = $1 AND appointment_date = $2 AND appointment_time = $3 AND status != $4', [master_id, date, time, 'cancelled']);
         if (duplicate.rows.length > 0) {
             await client.query('ROLLBACK');
-            return res.status(409).json({ error: 'Это время уже занято' });
+            return res.status(409).json({ error: 'This time is already booked' });
         }
         await client.query('INSERT INTO appointments (user_id, master_id, master_service_id, appointment_date, appointment_time, notes) VALUES ($1,$2,$3,$4,$5,$6)', [req.session.userId, master_id, master_service_id, date, time, notes]);
         await client.query('COMMIT');
@@ -290,8 +289,8 @@ app.post('/api/appointments', isAuthenticated, async (req, res) => {
 app.put('/api/appointments/:id/cancel', isAuthenticated, async (req, res) => {
     const { id } = req.params;
     const result = await pool.query('SELECT user_id FROM appointments WHERE id = $1', [id]);
-    if (result.rows.length === 0) return res.status(404).json({ error: 'Запись не найдена' });
-    if (result.rows[0].user_id !== req.session.userId) return res.status(403).json({ error: 'Нет прав' });
+    if (result.rows.length === 0) return res.status(404).json({ error: 'Booking not found' });
+    if (result.rows[0].user_id !== req.session.userId) return res.status(403).json({ error: 'No permission' });
     await pool.query('UPDATE appointments SET status = $1 WHERE id = $2', ['cancelled', id]);
     res.json({ success: true });
 });
@@ -324,6 +323,6 @@ app.get('/admin', (req, res) => res.sendFile(path.join(__dirname, 'views', 'admi
 app.get('/health', (req, res) => res.status(200).json({ status: 'ok' }));
 
 app.listen(PORT, () => {
-    console.log(`🚀 Сервер: http://localhost:${PORT}`);
-    console.log(`👨‍💼 Админка: http://localhost:${PORT}/admin`);
+    console.log(`🚀 Server: http://localhost:${PORT}`);
+    console.log(`👨‍💼 Admin: http://localhost:${PORT}/admin`);
 });
