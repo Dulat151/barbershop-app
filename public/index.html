@@ -65,6 +65,20 @@
     <script>
         let selectedMaster=null,selectedService=null,selectedDate=null,selectedTime=null,currentUser=null,currentStep=1;
         
+        // Функция для перевода дней недели на русский
+        function translateDayOff(day) {
+            const days = {
+                'Monday': 'Понедельник',
+                'Tuesday': 'Вторник',
+                'Wednesday': 'Среда',
+                'Thursday': 'Четверг',
+                'Friday': 'Пятница',
+                'Saturday': 'Суббота',
+                'Sunday': 'Воскресенье'
+            };
+            return days[day] || day;
+        }
+        
         function showError(msg){const toast=document.getElementById('errorToast');toast.innerHTML=msg+' <button class="retry-btn" onclick="location.reload()">Обновить</button>';toast.style.display='block';setTimeout(()=>{toast.style.display='none'},8000);}
         
         async function fetchWithRetry(url,retries=3){for(let i=0;i<retries;i++){try{const res=await fetch(url);if(res.ok)return res;if(res.status===502&&i<retries-1){await new Promise(r=>setTimeout(r,2000));continue}return res;}catch(e){if(i===retries-1)throw e;await new Promise(r=>setTimeout(r,2000));}}}
@@ -85,7 +99,7 @@
         
         async function showBookingInterface(){const c=document.getElementById('mainContent');c.innerHTML='<div class="step active" id="step1"><h2><i class="fas fa-tshirt"></i> Шаг 1: Выберите мастера</h2><div class="masters-grid" id="mastersGrid"></div></div><div class="step" id="step2"><h2><i class="fas fa-cut"></i> Шаг 2: Выберите услугу</h2><div class="services-list" id="servicesList"></div></div><div class="step" id="step3"><h2><i class="fas fa-calendar"></i> Шаг 3: Выберите дату и время</h2><input type="date" id="appointmentDate" min=""><div class="time-slots" id="timeSlots"></div></div><div class="step" id="step4"><h2><i class="fas fa-phone"></i> Шаг 4: Контактные данные и пожелания</h2><form id="bookingForm"><input type="tel" id="clientPhone" placeholder="📞 Номер телефона *" value="'+(currentUser?.phone||'')+'" required><textarea id="notes" placeholder="Пожелания к стрижке (необязательно)" rows="3"></textarea><button type="submit"><i class="fas fa-check"></i> Записаться</button></form></div><div id="myAppointments" class="my-appointments"></div>';await loadMasters();await loadMyAppointments();setupBookingHandlers();currentStep=1;showBackButton(false)}
         
-        async function loadMasters(){const r=await fetchWithRetry('/api/masters');if(!r.ok){document.getElementById('mastersGrid').innerHTML='<p style="color:red">Ошибка загрузки. <button onclick="location.reload()">Обновить</button></p>';return}const m=await r.json();document.getElementById('mastersGrid').innerHTML=m.map(m=>'<div class="master-card" data-id="'+m.id+'"><h3>✂️ '+m.name+'</h3><p>'+(m.specialization||'Универсал')+'</p><p>⭐ '+(m.experience||0)+' лет</p><small>🕐 '+(m.work_start?.substring(0,5)||'10:00')+' - '+(m.work_end?.substring(0,5)||'20:00')+'</small>'+(m.day_off?'<div class="day-off-badge">Выходной: '+m.day_off+'</div>':'')+'</div>').join('');document.querySelectorAll('.master-card').forEach(c=>c.onclick=()=>selectMaster(c))}
+        async function loadMasters(){const r=await fetchWithRetry('/api/masters');if(!r.ok){document.getElementById('mastersGrid').innerHTML='<p style="color:red">Ошибка загрузки. <button onclick="location.reload()">Обновить</button></p>';return}const m=await r.json();document.getElementById('mastersGrid').innerHTML=m.map(m=>'<div class="master-card" data-id="'+m.id+'"><h3>✂️ '+m.name+'</h3><p>'+(m.specialization||'Универсал')+'</p><p>⭐ '+(m.experience||0)+' лет</p><small>🕐 '+(m.work_start?.substring(0,5)||'10:00')+' - '+(m.work_end?.substring(0,5)||'20:00')+'</small>'+(m.day_off?'<div class="day-off-badge">Выходной: '+translateDayOff(m.day_off)+'</div>':'')+'</div>').join('');document.querySelectorAll('.master-card').forEach(c=>c.onclick=()=>selectMaster(c))}
         
         function selectMaster(c){document.querySelectorAll('.master-card').forEach(c=>c.classList.remove('selected'));c.classList.add('selected');selectedMaster={id:c.dataset.id,name:c.querySelector('h3').innerText};currentStep=2;showStep(currentStep);showBackButton(true);loadServicesForMaster(selectedMaster.id)}
         
