@@ -52,48 +52,10 @@ async function deleteOldAppointments() {
 
 async function initDatabase() {
     try {
-        // Добавляем колонку phone если её нет (ВАЖНО!)
         await pool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS phone VARCHAR(20);`);
-        console.log('✅ Колонка phone проверена/добавлена');
+        await pool.query(`ALTER TABLE masters ADD COLUMN IF NOT EXISTS day_off VARCHAR(20);`);
         
-        // Создаём таблицы если их нет
-        await pool.query(`CREATE TABLE IF NOT EXISTS users (id SERIAL PRIMARY KEY, name VARCHAR(100), email VARCHAR(100) UNIQUE, phone VARCHAR(20), provider VARCHAR(50), created_at TIMESTAMP DEFAULT NOW());`);
-        await pool.query(`CREATE TABLE IF NOT EXISTS masters (id SERIAL PRIMARY KEY, name VARCHAR(100), specialization VARCHAR(100), experience INT, work_start TIME DEFAULT '10:00', work_end TIME DEFAULT '20:00', break_start TIME, break_end TIME);`);
-        await pool.query(`CREATE TABLE IF NOT EXISTS master_services (id SERIAL PRIMARY KEY, master_id INT REFERENCES masters(id), name VARCHAR(100), price DECIMAL(10,2), duration INT);`);
-        await pool.query(`CREATE TABLE IF NOT EXISTS appointments (id SERIAL PRIMARY KEY, user_id INT REFERENCES users(id), master_id INT REFERENCES masters(id), master_service_id INT REFERENCES master_services(id), appointment_date DATE, appointment_time TIME, status VARCHAR(20) DEFAULT 'pending', notes TEXT, created_at TIMESTAMP DEFAULT NOW());`);
-        await pool.query(`CREATE TABLE IF NOT EXISTS admins (id SERIAL PRIMARY KEY, email VARCHAR(255) UNIQUE, name VARCHAR(100), created_at TIMESTAMP DEFAULT NOW());`);
-        
-        await pool.query(`ALTER TABLE masters ADD COLUMN IF NOT EXISTS break_start TIME;`);
-        await pool.query(`ALTER TABLE masters ADD COLUMN IF NOT EXISTS break_end TIME;`);
-        
-        const masters = await pool.query('SELECT COUNT(*) FROM masters');
-        if (parseInt(masters.rows[0].count) === 0) {
-            await pool.query(`INSERT INTO masters (name, specialization, experience, work_start, work_end) VALUES 
-                ('Алексей', 'Fade, классика', 8, '10:00', '20:00'),
-                ('Дмитрий', 'Борода, усы', 5, '10:00', '20:00'),
-                ('Максим', 'Детские стрижки', 10, '10:00', '19:00');`);
-            console.log('✅ Добавлены мастера');
-        }
-        
-        const services = await pool.query('SELECT COUNT(*) FROM master_services');
-        if (parseInt(services.rows[0].count) === 0) {
-            await pool.query(`INSERT INTO master_services (master_id, name, price, duration) VALUES 
-                (1, 'Мужская стрижка', 8250, 60),
-                (1, 'Стрижка + борода', 13750, 90),
-                (2, 'Коррекция бороды', 4400, 30),
-                (2, 'Бритьё головы', 5500, 30),
-                (3, 'Детская стрижка', 6600, 45);`);
-            console.log('✅ Добавлены услуги');
-        }
-        
-        const admin = await pool.query("SELECT COUNT(*) FROM admins");
-        if (parseInt(admin.rows[0].count) === 0) {
-            await pool.query("INSERT INTO admins (email, name) VALUES ('admin@barbershop.com', 'Admin')");
-            console.log('✅ Добавлен админ');
-        }
-        
-        await deleteOldAppointments();
-        console.log('✅ База данных инициализирована');
+        console.log('✅ База данных готова');
     } catch (err) {
         console.error('❌ Ошибка инициализации БД:', err.message);
     }
@@ -123,27 +85,15 @@ const isAuthenticated = (req, res, next) => {
 // ============ АВТОРИЗАЦИЯ ============
 app.post('/api/auth/google', async (req, res) => {
     const { credential } = req.body;
-    console.log('🔐 Google auth request received');
-    
-    if (!credential) {
-        return res.status(400).json({ error: 'No credential provided' });
-    }
-    
+    if (!credential) return res.status(400).json({ error: 'No credential provided' });
     try {
-        const ticket = await googleClient.verifyIdToken({
-            idToken: credential,
-            audience: GOOGLE_CLIENT_ID
-        });
-        
+        const ticket = await googleClient.verifyIdToken({ idToken: credential, audience: GOOGLE_CLIENT_ID });
         const payload = ticket.getPayload();
         const { email, name } = payload;
-        
-        console.log(`✅ User verified: ${email}`);
 
         let user = await pool.query('SELECT * FROM users WHERE email = $1', [email]);
         if (user.rows.length === 0) {
             user = await pool.query('INSERT INTO users (name, email, provider) VALUES ($1, $2, $3) RETURNING *', [name, email, 'google']);
-            console.log(`📝 New user created: ${email}`);
         }
 
         req.session.userId = user.rows[0].id;
@@ -153,17 +103,10 @@ app.post('/api/auth/google', async (req, res) => {
 
         const adminCheck = await pool.query('SELECT * FROM admins WHERE email = $1', [email]);
         req.session.isAdmin = adminCheck.rows.length > 0;
-        
         req.session.save();
 
-        res.json({ 
-            success: true, 
-            user: { id: user.rows[0].id, name: user.rows[0].name, email: user.rows[0].email, phone: user.rows[0].phone },
-            isAdmin: req.session.isAdmin, 
-            needPhone: !user.rows[0].phone 
-        });
+        res.json({ success: true, user: { id: user.rows[0].id, name: user.rows[0].name, email: user.rows[0].email, phone: user.rows[0].phone }, isAdmin: req.session.isAdmin, needPhone: !user.rows[0].phone });
     } catch (error) {
-        console.error('❌ Auth error:', error.message);
         res.status(401).json({ error: 'Ошибка авторизации' });
     }
 });
@@ -181,11 +124,9 @@ app.post('/api/auth/update-phone', isAuthenticated, async (req, res) => {
 
 app.post('/api/auth/admin/login', async (req, res) => {
     const { password } = req.body;
-    
     if (password === '112233') {
         req.session.isAdmin = true;
         req.session.userName = 'Администратор';
-        req.session.userEmail = 'admin@barbershop.com';
         req.session.save();
         res.json({ success: true });
     } else {
@@ -202,12 +143,7 @@ app.get('/api/auth/check', (req, res) => {
     res.json({
         isAuthenticated: !!req.session.userId,
         isAdmin: req.session.isAdmin || false,
-        user: req.session.userId ? { 
-            id: req.session.userId, 
-            name: req.session.userName, 
-            email: req.session.userEmail,
-            phone: req.session.userPhone
-        } : null
+        user: req.session.userId ? { id: req.session.userId, name: req.session.userName, email: req.session.userEmail, phone: req.session.userPhone } : null
     });
 });
 
@@ -222,14 +158,14 @@ app.get('/api/masters', async (req, res) => {
 });
 
 app.post('/api/masters', isAdmin, async (req, res) => {
-    const { name, specialization, experience, work_start, work_end, break_start, break_end } = req.body;
-    const result = await pool.query('INSERT INTO masters (name, specialization, experience, work_start, work_end, break_start, break_end) VALUES ($1,$2,$3,$4,$5,$6,$7) RETURNING *', [name, specialization, experience, work_start, work_end, break_start || null, break_end || null]);
+    const { name, specialization, experience, work_start, work_end, day_off } = req.body;
+    const result = await pool.query('INSERT INTO masters (name, specialization, experience, work_start, work_end, day_off) VALUES ($1,$2,$3,$4,$5,$6) RETURNING *', [name, specialization, experience, work_start, work_end, day_off || null]);
     res.json(result.rows[0]);
 });
 
 app.put('/api/masters/:id', isAdmin, async (req, res) => {
-    const { name, specialization, experience, work_start, work_end, break_start, break_end } = req.body;
-    await pool.query('UPDATE masters SET name=$1, specialization=$2, experience=$3, work_start=$4, work_end=$5, break_start=$6, break_end=$7 WHERE id=$8', [name, specialization, experience, work_start, work_end, break_start, break_end, req.params.id]);
+    const { name, specialization, experience, work_start, work_end, day_off } = req.body;
+    await pool.query('UPDATE masters SET name=$1, specialization=$2, experience=$3, work_start=$4, work_end=$5, day_off=$6 WHERE id=$7', [name, specialization, experience, work_start, work_end, day_off || null, req.params.id]);
     res.json({ success: true });
 });
 
@@ -270,6 +206,12 @@ app.post('/api/masters/:id/services', isAdmin, async (req, res) => {
     res.json(result.rows[0]);
 });
 
+app.put('/api/masters/:masterId/services/:serviceId', isAdmin, async (req, res) => {
+    const { name, price, duration } = req.body;
+    await pool.query('UPDATE master_services SET name=$1, price=$2, duration=$3 WHERE id=$4 AND master_id=$5', [name, price, duration, req.params.serviceId, req.params.masterId]);
+    res.json({ success: true });
+});
+
 app.delete('/api/masters/:masterId/services/:serviceId', isAdmin, async (req, res) => {
     await pool.query('DELETE FROM master_services WHERE id = $1 AND master_id = $2', [req.params.serviceId, req.params.masterId]);
     res.json({ success: true });
@@ -300,20 +242,17 @@ app.get('/api/my-appointments', isAuthenticated, async (req, res) => {
 app.get('/api/available-slots/:masterId/:date', async (req, res) => {
     try {
         const { masterId, date } = req.params;
-        const master = await pool.query('SELECT work_start, work_end, break_start, break_end FROM masters WHERE id = $1', [masterId]);
+        const master = await pool.query('SELECT work_start, work_end FROM masters WHERE id = $1', [masterId]);
         if (master.rows.length === 0) return res.json([]);
         
         const workStart = parseInt(master.rows[0].work_start.split(':')[0]);
         const workEnd = parseInt(master.rows[0].work_end.split(':')[0]);
-        const breakStart = master.rows[0].break_start ? parseInt(master.rows[0].break_start.split(':')[0]) : null;
-        const breakEnd = master.rows[0].break_end ? parseInt(master.rows[0].break_end.split(':')[0]) : null;
         
         const booked = await pool.query('SELECT appointment_time FROM appointments WHERE master_id = $1 AND appointment_date = $2 AND status != $3', [masterId, date, 'cancelled']);
         const bookedTimes = booked.rows.map(r => r.appointment_time);
         
         const slots = [];
         for (let hour = workStart; hour < workEnd; hour++) {
-            if (breakStart && breakEnd && hour >= breakStart && hour < breakEnd) continue;
             const time = `${hour.toString().padStart(2, '0')}:00:00`;
             if (!bookedTimes.includes(time)) slots.push(time);
         }
@@ -328,12 +267,10 @@ app.post('/api/appointments', isAuthenticated, async (req, res) => {
     const client = await pool.connect();
     try {
         await client.query('BEGIN');
-        
         if (phone) {
             await client.query('UPDATE users SET phone = $1 WHERE id = $2', [phone, req.session.userId]);
             req.session.userPhone = phone;
         }
-        
         const duplicate = await client.query('SELECT id FROM appointments WHERE master_id = $1 AND appointment_date = $2 AND appointment_time = $3 AND status != $4', [master_id, date, time, 'cancelled']);
         if (duplicate.rows.length > 0) {
             await client.query('ROLLBACK');
