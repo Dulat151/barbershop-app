@@ -238,48 +238,131 @@ app.get('/api/my-appointments', isAuthenticated, async (req, res) => {
     res.json(result.rows);
 });
 
+// ============ AVAILABLE SLOTS (FIXED - 30 MIN INTERVALS) ============
 app.get('/api/available-slots/:masterId/:date', async (req, res) => {
     try {
         const { masterId, date } = req.params;
-        const master = await pool.query('SELECT work_start, work_end FROM masters WHERE id = $1', [masterId]);
+        
+        const master = await pool.query('SELECT work_start, work_end, day_off FROM masters WHERE id = $1', [masterId]);
         if (master.rows.length === 0) return res.json([]);
         
-        const workStart = parseInt(master.rows[0].work_start.split(':')[0]);
-        const workEnd = parseInt(master.rows[0].work_end.split(':')[0]);
-        
-        const booked = await pool.query('SELECT appointment_time FROM appointments WHERE master_id = $1 AND appointment_date = $2 AND status != $3', [masterId, date, 'cancelled']);
-        const bookedTimes = booked.rows.map(r => r.appointment_time);
-        
-        const slots = [];
-        for (let hour = workStart; hour < workEnd; hour++) {
-            const time = `${hour.toString().padStart(2, '0')}:00:00`;
-            if (!bookedTimes.includes(time)) slots.push(time);
+        // Проверка выходного дня
+        if (master.rows[0].day_off) {
+            const dayNames = ['Воскресенье', 'Понедельник', 'Вторник', 'Среда', 'Четверг', 'Пятница', 'Суббота'];
+            const dateDay = dayNames[new Date(date).getDay()];
+            if (dateDay === master.rows[0].day_off) {
+                return res.json([]);
+            }
         }
-        res.json(slots);
+        
+        const workStart = master.rows[0].work_start || '10:00:00';
+        const workEnd = master.rows[0].work_end || '20:00:00';
+        const startHour = parseInt(workStart.split(':')[0]);
+        const endHour = parseInt(workEnd.split(':')[0]);
+        
+        // Получаем все занятые слоты с учетом длительности услуг
+        const booked = await pool.query(
+            `SELECT a.appointment_time, ms.duration 
+             FROM appointments a
+             JOIN master_services ms ON a.master_service_id = ms.id
+             WHERE a.master_id = $1 AND a.appointment_date = $2 AND a.status != $3`,
+            [masterId, date, 'cancelled']
+        );
+        
+        // Создаем множество занятых слотов (каждые 30 минут)
+        const bookedSlots = new Set();
+        for (const row of booked.rows) {
+            const startTime = row.appointment_time;
+            const duration = row.duration || 30;
+            const slotsToBlock = Math.ceil(duration / 30);
+            
+            const [hour, minute] = startTime.split(':');
+            let currentHour = parseInt(hour);
+            let currentMinute = parseInt(minute);
+            
+            for (let i = 0; i < slotsToBlock; i++) {
+                const timeStr = `${currentHour.toString().padStart(2, '0')}:${currentMinute.toString().padStart(2, '0')}:00`;
+                bookedSlots.add(timeStr);
+                currentMinute += 30;
+                if (currentMinute >= 60) {
+                    currentHour++;
+                    currentMinute = 0;
+                }
+            }
+        }
+        
+        // Генерируем все возможные слоты каждые 30 минут
+        const allSlots = [];
+        for (let hour = startHour; hour < endHour; hour++) {
+            allSlots.push(`${hour.toString().padStart(2, '0')}:00:00`);
+            allSlots.push(`${hour.toString().padStart(2, '0')}:30:00`);
+        }
+        allSlots.push(`${endHour.toString().padStart(2, '0')}:00:00`);
+        
+        // Фильтруем свободные слоты
+        const available = allSlots.filter(slot => !bookedSlots.has(slot));
+        res.json(available);
     } catch (err) {
+        console.error('Error loading slots:', err);
         res.status(500).json({ error: 'Error loading slots' });
     }
 });
 
+// ============ CREATE APPOINTMENT (FIXED - CHECKS ALL 30 MIN SLOTS) ============
 app.post('/api/appointments', isAuthenticated, async (req, res) => {
     const { master_id, master_service_id, date, time, phone, notes } = req.body;
     const client = await pool.connect();
     try {
         await client.query('BEGIN');
+        
         if (phone) {
             await client.query('UPDATE users SET phone = $1 WHERE id = $2', [phone, req.session.userId]);
             req.session.userPhone = phone;
         }
-        const duplicate = await client.query('SELECT id FROM appointments WHERE master_id = $1 AND appointment_date = $2 AND appointment_time = $3 AND status != $4', [master_id, date, time, 'cancelled']);
-        if (duplicate.rows.length > 0) {
-            await client.query('ROLLBACK');
-            return res.status(409).json({ error: 'This time is already booked' });
+        
+        // Получаем длительность услуги
+        const service = await client.query('SELECT duration FROM master_services WHERE id = $1', [master_service_id]);
+        const duration = service.rows[0].duration;
+        const slotsToBlock = Math.ceil(duration / 30);
+        
+        // Проверяем все слоты, которые займет услуга
+        const [hour, minute] = time.split(':');
+        let currentHour = parseInt(hour);
+        let currentMinute = parseInt(minute);
+        const timeSlotsToCheck = [time];
+        
+        for (let i = 1; i < slotsToBlock; i++) {
+            currentMinute += 30;
+            if (currentMinute >= 60) {
+                currentHour++;
+                currentMinute = 0;
+            }
+            const nextSlot = `${currentHour.toString().padStart(2, '0')}:${currentMinute.toString().padStart(2, '0')}:00`;
+            timeSlotsToCheck.push(nextSlot);
         }
-        await client.query('INSERT INTO appointments (user_id, master_id, master_service_id, appointment_date, appointment_time, notes) VALUES ($1,$2,$3,$4,$5,$6)', [req.session.userId, master_id, master_service_id, date, time, notes]);
+        
+        // Проверяем каждый слот на конфликт
+        for (const slot of timeSlotsToCheck) {
+            const duplicate = await client.query(
+                'SELECT id FROM appointments WHERE master_id = $1 AND appointment_date = $2 AND appointment_time = $3 AND status != $4',
+                [master_id, date, slot, 'cancelled']
+            );
+            if (duplicate.rows.length > 0) {
+                await client.query('ROLLBACK');
+                return res.status(409).json({ error: `Время ${slot.substring(0,5)} уже занято` });
+            }
+        }
+        
+        await client.query(
+            'INSERT INTO appointments (user_id, master_id, master_service_id, appointment_date, appointment_time, notes) VALUES ($1,$2,$3,$4,$5,$6)',
+            [req.session.userId, master_id, master_service_id, date, time, notes]
+        );
+        
         await client.query('COMMIT');
         res.json({ success: true });
     } catch (err) {
         await client.query('ROLLBACK');
+        console.error('Booking error:', err);
         res.status(500).json({ error: err.message });
     } finally {
         client.release();
